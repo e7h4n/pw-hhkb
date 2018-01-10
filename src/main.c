@@ -2,6 +2,7 @@
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
+
 #include <app_error.h>
 #include <app_scheduler.h>
 #include <app_timer_appsh.h>

@@ -42,7 +42,9 @@ typedef struct hid_key_buffer {
     uint8_t data_len; /**< Total length of data */
     uint8_t *p_data; /**< Scanned key pattern */
     ble_hids_t *p_instance; /**< Identifies peer and service instance */
-} buffer_entry_t;STATIC_ASSERT(sizeof(buffer_entry_t) % 4 == 0);
+} buffer_entry_t;
+
+STATIC_ASSERT(sizeof(buffer_entry_t) % 4 == 0);
 
 /** Circular buffer list */
 typedef struct {
@@ -50,7 +52,9 @@ typedef struct {
     uint8_t rp; /**< Index to the read location */
     uint8_t wp; /**< Index to write location */
     uint8_t count; /**< Number of elements in the list */
-} buffer_list_t;STATIC_ASSERT(sizeof(buffer_list_t) % 4 == 0);
+} buffer_list_t;
+
+STATIC_ASSERT(sizeof(buffer_list_t) % 4 == 0);
 
 static ble_hids_t m_hids; /**< Structure used to identify the HID service. */
 static ble_bas_t m_bas; /**< Structure used to identify the battery service. */
