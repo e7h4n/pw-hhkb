@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 project(pw-hhkb C ASM)
 
-set(NRF_TARGET nrf51)
 include(CMakeEnv.cmake)
 include(CMake_nRF5x.cmake)
 

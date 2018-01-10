@@ -16,6 +16,10 @@
 #define STR(s) XSTR(s)
 #define XSTR(s) #s
 
+#define bitRead(value, bit) (((value) >> (bit)) & 0x01ul)
+#define bitSet(value, bit) ((value) |= (1UL << (bit)))
+#define bitClear(value, bit) ((value) &= ~(1UL << (bit)))
+#define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
 uint8_t bitpop(uint8_t bits);
 

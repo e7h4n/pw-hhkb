@@ -2,3 +2,4 @@
 set(NRF5_SDK_PATH /opt/nRF5_SDK_12.3.0_d7731ad)
 set(ARM_NONE_EABI_TOOLCHAIN_PATH /opt/7-2017-q4-major/gcc-arm-none-eabi-7-2017-q4-major/)
 set(NRFJPROG /opt/bin/nrfjprog)
+set(NRF_TARGET nrf52)
