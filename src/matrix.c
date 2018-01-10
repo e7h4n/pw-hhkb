@@ -16,20 +16,20 @@
 #define KEY_READ_PIN 7
 #define MATRIX_POWER_PIN 8
 
-static const int STANDY_INPUT_GPIO = (0b111 << ROW_PIN_START)
-                                     | (0b1 << HYS_PIN)
-                                     | (0b111 << COL_PIN_START)
-                                     | (0b1 << COL_CTRL_PIN);
-
-static const int STANDY_OUTPUT_GPIO = (0b1 << KEY_READ_PIN)
-                                      | (0b1 << MATRIX_POWER_PIN);
-
-static const int SLEEP_GPIO = (0b111 << ROW_PIN_START)
-                              | (0b1 << HYS_PIN)
-                              | (0b111 << COL_PIN_START)
-                              | (0b1 << COL_CTRL_PIN)
-                              | (0b1 << KEY_READ_PIN)
-                              | (0b1 << MATRIX_POWER_PIN);
+//static const int STANDY_INPUT_GPIO = (0b111 << ROW_PIN_START)
+//                                     | (0b1 << HYS_PIN)
+//                                     | (0b111 << COL_PIN_START)
+//                                     | (0b1 << COL_CTRL_PIN);
+//
+//static const int STANDY_OUTPUT_GPIO = (0b1 << KEY_READ_PIN)
+//                                      | (0b1 << MATRIX_POWER_PIN);
+//
+//static const int SLEEP_GPIO = (0b111 << ROW_PIN_START)
+//                              | (0b1 << HYS_PIN)
+//                              | (0b111 << COL_PIN_START)
+//                              | (0b1 << COL_CTRL_PIN)
+//                              | (0b1 << KEY_READ_PIN)
+//                              | (0b1 << MATRIX_POWER_PIN);
 
 matrix_row_t currentState[MATRIX_ROWS] = {0};
 matrix_row_t prevState[MATRIX_ROWS] = {0};
@@ -52,11 +52,10 @@ bool matrix_is_on(uint8_t row, uint8_t col) {
 }
 
 uint8_t matrix_scan(void) {
-
+    return 0;
 }
 
 void matrix_init(void) {
-    NRF_GPIO->DIR
 }
 
 uint8_t matrix_rows(void) {
