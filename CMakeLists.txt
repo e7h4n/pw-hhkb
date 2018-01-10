@@ -34,7 +34,7 @@ list(APPEND SDK_SOURCE_FILES
 )
 
 
-include_directories(".")
-list(APPEND SOURCE_FILES "main.c")
+include_directories("./src")
+list(APPEND SOURCE_FILES "src/main.c")
 
 nRF5x_addExecutable(${PROJECT_NAME} "${SOURCE_FILES}")

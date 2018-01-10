@@ -1,232 +1,31 @@
-#include <stdint.h>
-#include <string.h>
-#include "nordic_common.h"
-#include "nrf.h"
-#include "nrf_assert.h"
-#include "nrf_gpio.h"
-#include "ble.h"
-#include "ble_hci.h"
-#include "ble_srv_common.h"
-#include "ble_advertising.h"
-#include "ble_hids.h"
-#include "ble_bas.h"
-#include "ble_dis.h"
-#include "ble_conn_params.h"
-#include "bsp.h"
-#include "sensorsim.h"
-#include "bsp_btn_ble.h"
-#include "app_scheduler.h"
-#include "softdevice_handler_appsh.h"
-#include "app_timer_appsh.h"
-#include "peer_manager.h"
-#include "fds.h"
-#include "fstorage.h"
-#include "ble_conn_state.h"
-
 #define NRF_LOG_MODULE_NAME "APP"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
+#include <app_error.h>
+#include <app_scheduler.h>
+#include <app_timer_appsh.h>
+#include <ble_advertising/ble_advertising.h>
+#include <ble_services/ble_bas/ble_bas.h>
+#include <ble_services/ble_dis/ble_dis.h>
+#include <ble_services/ble_hids/ble_hids.h>
+#include <bsp.h>
+#include <bsp_btn_ble.h>
+#include <common/ble_conn_params.h>
+#include <common/ble_conn_state.h>
+#include <fds.h>
+#include <fstorage.h>
+#include <nrf_sdm.h>
+#include <peer_manager/peer_manager.h>
+#include <sensorsim.h>
+#include <softdevice_handler_appsh.h>
 
-#if BUTTONS_NUMBER < 2
-#error "Not enough resources on board"
-#endif
+#include "main.h"
 
-#if (NRF_SD_BLE_API_VERSION == 3)
-#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                       /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
-#endif
-
-#define CENTRAL_LINK_COUNT               0                                          /**< Number of central links used by the application. When changing this number remember to adjust the RAM settings*/
-#define PERIPHERAL_LINK_COUNT            1                                          /**< Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
-
-#define SHIFT_BUTTON_ID                  1                                          /**< Button used as 'SHIFT' Key. */
-
-#define DEVICE_NAME                      "Nordic_Keyboard"                          /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME                "NordicSemiconductor"                      /**< Manufacturer. Will be passed to Device Information Service. */
-
-#define APP_TIMER_PRESCALER              0                                          /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_OP_QUEUE_SIZE          4                                          /**< Size of timer operation queues. */
-
-#define BATTERY_LEVEL_MEAS_INTERVAL      APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER) /**< Battery level measurement interval (ticks). */
-#define MIN_BATTERY_LEVEL                81                                         /**< Minimum simulated battery level. */
-#define MAX_BATTERY_LEVEL                100                                        /**< Maximum simulated battery level. */
-#define BATTERY_LEVEL_INCREMENT          1                                          /**< Increment between each simulated battery level measurement. */
-
-#define PNP_ID_VENDOR_ID_SOURCE          0x02                                       /**< Vendor ID Source. */
-#define PNP_ID_VENDOR_ID                 0x1915                                     /**< Vendor ID. */
-#define PNP_ID_PRODUCT_ID                0xEEEE                                     /**< Product ID. */
-#define PNP_ID_PRODUCT_VERSION           0x0001                                     /**< Product Version. */
-
-#define APP_ADV_FAST_INTERVAL            0x0028                                     /**< Fast advertising interval (in units of 0.625 ms. This value corresponds to 25 ms.). */
-#define APP_ADV_SLOW_INTERVAL            0x0C80                                     /**< Slow advertising interval (in units of 0.625 ms. This value corrsponds to 2 seconds). */
-#define APP_ADV_FAST_TIMEOUT             30                                         /**< The duration of the fast advertising period (in seconds). */
-#define APP_ADV_SLOW_TIMEOUT             180                                        /**< The duration of the slow advertising period (in seconds). */
-
-/*lint -emacro(524, MIN_CONN_INTERVAL) // Loss of precision */
-#define MIN_CONN_INTERVAL                MSEC_TO_UNITS(7.5, UNIT_1_25_MS)            /**< Minimum connection interval (7.5 ms) */
-#define MAX_CONN_INTERVAL                MSEC_TO_UNITS(30, UNIT_1_25_MS)             /**< Maximum connection interval (30 ms). */
-#define SLAVE_LATENCY                    6                                           /**< Slave latency. */
-#define CONN_SUP_TIMEOUT                 MSEC_TO_UNITS(430, UNIT_10_MS)              /**< Connection supervisory timeout (430 ms). */
-
-#define FIRST_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY    APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
-#define MAX_CONN_PARAMS_UPDATE_COUNT     3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
-
-#define SEC_PARAM_BOND                   1                                           /**< Perform bonding. */
-#define SEC_PARAM_MITM                   0                                           /**< Man In The Middle protection not required. */
-#define SEC_PARAM_LESC                   0                                           /**< LE Secure Connections not enabled. */
-#define SEC_PARAM_KEYPRESS               0                                           /**< Keypress notifications not enabled. */
-#define SEC_PARAM_IO_CAPABILITIES        BLE_GAP_IO_CAPS_NONE                        /**< No I/O capabilities. */
-#define SEC_PARAM_OOB                    0                                           /**< Out Of Band data not available. */
-#define SEC_PARAM_MIN_KEY_SIZE           7                                           /**< Minimum encryption key size. */
-#define SEC_PARAM_MAX_KEY_SIZE           16                                          /**< Maximum encryption key size. */
-
-#define OUTPUT_REPORT_INDEX              0                                           /**< Index of Output Report. */
-#define OUTPUT_REPORT_MAX_LEN            1                                           /**< Maximum length of Output Report. */
-#define INPUT_REPORT_KEYS_INDEX          0                                           /**< Index of Input Report. */
-#define OUTPUT_REPORT_BIT_MASK_CAPS_LOCK 0x02                                        /**< CAPS LOCK bit in Output Report (based on 'LED Page (0x08)' of the Universal Serial Bus HID Usage Tables). */
-#define INPUT_REP_REF_ID                 0                                           /**< Id of reference to Keyboard Input Report. */
-#define OUTPUT_REP_REF_ID                0                                           /**< Id of reference to Keyboard Output Report. */
-
-#define APP_FEATURE_NOT_SUPPORTED        (BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2)        /**< Reply when unsupported features are requested. */
-
-#define MAX_BUFFER_ENTRIES               5                                           /**< Number of elements that can be enqueued */
-
-#define BASE_USB_HID_SPEC_VERSION        0x0101                                      /**< Version number of base USB HID Specification implemented by this application. */
-
-#define INPUT_REPORT_KEYS_MAX_LEN        8                                           /**< Maximum length of the Input Report characteristic. */
-
-#define DEAD_BEEF                        0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
-
-#define SCHED_MAX_EVENT_DATA_SIZE        MAX(APP_TIMER_SCHED_EVT_SIZE, \
-                                             BLE_STACK_HANDLER_SCHED_EVT_SIZE)       /**< Maximum size of scheduler events. */
-#ifdef SVCALL_AS_NORMAL_FUNCTION
-#define SCHED_QUEUE_SIZE                 20                                          /**< Maximum number of events in the scheduler queue. More is needed in case of Serialization. */
-#else
-#define SCHED_QUEUE_SIZE                 10                                          /**< Maximum number of events in the scheduler queue. */
-#endif
-
-#define MODIFIER_KEY_POS                 0                                           /**< Position of the modifier byte in the Input Report. */
-#define SCAN_CODE_POS                    2                                           /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
-#define SHIFT_KEY_CODE                   0x02                                        /**< Key code indicating the press of the Shift Key. */
-
-#define MAX_KEYS_IN_ONE_REPORT           (INPUT_REPORT_KEYS_MAX_LEN - SCAN_CODE_POS) /**< Maximum number of key presses that can be sent in one Input Report. */
-
-
-/**Buffer queue access macros
- *
- * @{ */
-/** Initialization of buffer list */
-#define BUFFER_LIST_INIT()     \
-    do                         \
-    {                          \
-        buffer_list.rp    = 0; \
-        buffer_list.wp    = 0; \
-        buffer_list.count = 0; \
-    } while (0)
-
-/** Provide status of data list is full or not */
-#define BUFFER_LIST_FULL() \
-    ((MAX_BUFFER_ENTRIES == buffer_list.count - 1) ? true : false)
-
-/** Provides status of buffer list is empty or not */
-#define BUFFER_LIST_EMPTY() \
-    ((0 == buffer_list.count) ? true : false)
-
-#define BUFFER_ELEMENT_INIT(i)                 \
-    do                                         \
-    {                                          \
-        buffer_list.buffer[(i)].p_data = NULL; \
-    } while (0)
-
-/** @} */
-
-/** Abstracts buffer element */
-typedef struct hid_key_buffer {
-    uint8_t data_offset; /**< Max Data that can be buffered for all entries */
-    uint8_t data_len;    /**< Total length of data */
-    uint8_t *p_data;      /**< Scanned key pattern */
-    ble_hids_t *p_instance;  /**< Identifies peer and service instance */
-} buffer_entry_t;STATIC_ASSERT(sizeof(buffer_entry_t) % 4 == 0);
-
-/** Circular buffer list */
-typedef struct {
-    buffer_entry_t buffer[MAX_BUFFER_ENTRIES]; /**< Maximum number of entries that can enqueued in the list */
-    uint8_t rp;                         /**< Index to the read location */
-    uint8_t wp;                         /**< Index to write location */
-    uint8_t count;                      /**< Number of elements in the list */
-} buffer_list_t;STATIC_ASSERT(sizeof(buffer_list_t) % 4 == 0);
-
-static ble_hids_t m_hids;                                   /**< Structure used to identify the HID service. */
-static ble_bas_t m_bas;                                    /**< Structure used to identify the battery service. */
-static bool m_in_boot_mode = false;                   /**< Current protocol mode. */
-static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the current connection. */
-
-static sensorsim_cfg_t m_battery_sim_cfg;                 /**< Battery Level sensor simulator configuration. */
-static sensorsim_state_t m_battery_sim_state;               /**< Battery Level sensor simulator state. */
-
-APP_TIMER_DEF(m_battery_timer_id);                          /**< Battery timer. */
-
-static pm_peer_id_t m_peer_id;                              /**< Device reference handle to the current bonded central. */
-static bool m_caps_on = false;                      /**< Variable to indicate if Caps Lock is turned on. */
-
-static pm_peer_id_t m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**< List of peers currently in the whitelist. */
-static uint32_t m_whitelist_peer_cnt;                                 /**< Number of peers currently in the whitelist. */
-static bool m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
-
-static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE, BLE_UUID_TYPE_BLE}};
-
-static uint8_t m_sample_key_press_scan_str[] = /**< Key pattern to be sent when the key press button has been pushed. */
-        {
-                0x0b,                                      /* Key h */
-                0x08,                                      /* Key e */
-                0x0f,                                      /* Key l */
-                0x0f,                                      /* Key l */
-                0x12,                                      /* Key o */
-                0x28                                       /* Key Return */
-        };
-
-static uint8_t m_caps_on_key_scan_str[] = /**< Key pattern to be sent when the output report has been written with the CAPS LOCK bit set. */
-        {
-                0x06,                                 /* Key C */
-                0x04,                                 /* Key a */
-                0x13,                                 /* Key p */
-                0x16,                                 /* Key s */
-                0x12,                                 /* Key o */
-                0x11,                                 /* Key n */
-        };
-
-static uint8_t m_caps_off_key_scan_str[] = /**< Key pattern to be sent when the output report has been written with the CAPS LOCK bit cleared. */
-        {
-                0x06,                                  /* Key C */
-                0x04,                                  /* Key a */
-                0x13,                                  /* Key p */
-                0x16,                                  /* Key s */
-                0x12,                                  /* Key o */
-                0x09,                                  /* Key f */
-        };
-
-
-/** List to enqueue not just data to be sent, but also related information like the handle, connection handle etc */
-static buffer_list_t buffer_list;
-
-static void on_hids_evt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt);
-
-/**@brief Callback function for asserts in the SoftDevice.
- *
- * @details This function will be called in case of an assert in the SoftDevice.
- *
- * @warning This handler is an example only and does not fit a final product. You need to analyze
- *          how your product is supposed to react in case of Assert.
- * @warning On assert from the SoftDevice, the system can only recover on reset.
- *
- * @param[in]   line_num   Line number of the failing ASSERT call.
- * @param[in]   file_name  File name of the failing ASSERT call.
- */
+// TODO: 理解 assert 机制, 处理系统 assert
 void assert_nrf_callback(uint16_t line_num, const uint8_t *p_file_name) {
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
-
 
 /**@brief Fetch the list of peer manager peer IDs.
  *
@@ -234,9 +33,9 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t *p_file_name) {
  * @param[inout] p_size    In: The size of the @p p_peers buffer.
  *                         Out: The number of peers copied in the buffer.
  */
-static void peer_list_get(pm_peer_id_t *p_peers, uint32_t *p_size) {
-    pm_peer_id_t peer_id;
-    uint32_t peers_to_copy;
+static void peer_list_get(uint16_t *p_peers, __uint32_t *p_size) {
+    uint16_t peer_id;
+    __uint32_t peers_to_copy;
 
     peers_to_copy = (*p_size < BLE_GAP_WHITELIST_ADDR_MAX_COUNT) ?
                     *p_size : BLE_GAP_WHITELIST_ADDR_MAX_COUNT;
@@ -249,7 +48,6 @@ static void peer_list_get(pm_peer_id_t *p_peers, uint32_t *p_size) {
         peer_id = pm_next_peer_id_get(peer_id);
     }
 }
-
 
 /**@brief Function for starting advertising.
  */
