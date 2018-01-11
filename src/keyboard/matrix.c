@@ -15,11 +15,9 @@
 #define KEY_READ_PIN 7
 #define MATRIX_POWER_PIN 8
 
-#define SCAN_PHASE_SELECT 0
-#define SCAN_PHASE_PREV 1
-#define SCAN_PHASE_READ 2
-#define SCAN_PHASE_RESET 3
-#define SCAN_PHASE_END 4
+enum PHASE {
+    END = 1, SELECT, PREV, READ, RESET
+};
 
 static const int STANDBY_INPUT_GPIO = (0b111 << ROW_PIN_START)
                                       | (0b1 << HYS_PIN)
@@ -50,28 +48,13 @@ static matrix_row_t _matrix1[MATRIX_ROWS];
 
 static uint8_t row = 0;
 static uint8_t col = 0;
-static int scanStatus = SCAN_PHASE_END;
+static enum PHASE scanStatus;
 
 static on_matrix_scan onMatrixScan;
 
-static void enableHysControl() {
-    NRF_GPIO->OUT |= 1 << HYS_PIN;
-}
+static void continueSelect();
+static void onScanComplete();
 
-static void select(int row, int col) {
-    NRF_GPIO->OUT = NRF_GPIO->OUT | (row << ROW_PIN_START) | (col << COL_PIN_START) | (1 << COL_CTRL_PIN);
-}
-
-static void enable() {
-    NRF_GPIO->OUT &= ~(1 << COL_CTRL_PIN);
-}
-
-static void disable() {
-    NRF_GPIO->OUT = (NRF_GPIO->OUT & ~(0b111 << ROW_PIN_START) & ~(0b1 << HYS_PIN) & ~(0b111 << COL_PIN_START)) |
-                    (0b1 << COL_CTRL_PIN);
-}
-
-UNUSED
 static bool powerState() {
     return bitRead(NRF_GPIO->DIR, MATRIX_POWER_PIN) == GPIO_PIN_CNF_DIR_Output;
 }
@@ -96,6 +79,92 @@ static void powerOn() {
     NRF_GPIO->OUT = bitSet(NRF_GPIO->OUT, MATRIX_POWER_PIN);
 }
 
+static void onPhaseEnd() {
+    row = 0;
+    col = 0;
+
+    uint8_t *tmp;
+
+    tmp = matrix_prev;
+    matrix_prev = matrix;
+    matrix = tmp;
+
+    if (!powerState()) {
+        powerOn();
+    }
+
+    scanStatus = SELECT;
+    // TODO: set timer
+}
+
+static void onPhaseSelect() {
+    NRF_GPIO->OUT = NRF_GPIO->OUT | (row << ROW_PIN_START) | (col << COL_PIN_START) | (1 << COL_CTRL_PIN);
+    scanStatus = PREV;
+    // TODO: set timer 5us
+}
+
+static void onPhasePrev() {
+    if (matrix_prev[row] & (0b1 << col)) {
+        NRF_GPIO->OUT |= 1 << HYS_PIN;
+    }
+
+    scanStatus = READ;
+    // TODO: set timer 10us
+}
+
+static void onPhaseRead() {
+    NRF_GPIO->OUT &= ~(1 << COL_CTRL_PIN);
+
+    bool pressed = !(bitRead(NRF_GPIO->IN, KEY_READ_PIN));
+
+    if (pressed) {
+        matrix[row] |= 0b1 << col;
+    } else {
+        matrix[row] &= ~(0b1 << col);
+    }
+
+    scanStatus = RESET;
+
+    // TODO: set timer 5us
+}
+
+static void onPhaseReset() {
+    // disable matrix
+    NRF_GPIO->OUT = (NRF_GPIO->OUT & ~(0b111 << ROW_PIN_START) & ~(0b1 << HYS_PIN) & ~(0b111 << COL_PIN_START))
+                    | (0b1 << COL_CTRL_PIN);
+
+    // 还没扫到最后一个键
+    if (row < MATRIX_ROWS - 1 && col < MATRIX_COLS - 1) {
+        continueSelect();
+        return;
+    }
+
+    // 扫描结束，触发按键事件，确定是否休眠
+    onScanComplete();
+}
+
+static void continueSelect() {
+    scanStatus = SELECT;
+
+    col = (uint8_t) ((col + 1) % MATRIX_COLS);
+
+    if (col == 0) {
+        row += 1;
+    }
+
+    // TODO: set timer 80us
+}
+
+static void onScanComplete() {
+    scanStatus = END;
+
+    onMatrixScan(matrix, matrix_prev);
+
+    // TODO: power saving
+
+    // TODO: set timer
+}
+
 /**
  * 完整扫描一个键需要 100us
  *                                   80us
@@ -112,80 +181,24 @@ static void powerOn() {
 UNUSED
 static void loop() {
     switch (scanStatus) {
-        case SCAN_PHASE_END:
-            row = 0;
-            col = 0;
-
-            uint8_t *tmp;
-
-            tmp = matrix_prev;
-            matrix_prev = matrix;
-            matrix = tmp;
-
-            powerOn();
-
-            scanStatus = SCAN_PHASE_SELECT;
-            // TODO: set timer
+        case END:
+            onPhaseEnd();
             break;
 
-        case SCAN_PHASE_SELECT:
-            select(row, col);
-
-            scanStatus = SCAN_PHASE_PREV;
-            // TODO: set timer 5us
+        case SELECT:
+            onPhaseSelect();
             break;
 
-        case SCAN_PHASE_PREV:
-            if (matrix_prev[row] & (0b1 << col)) {
-                enableHysControl();
-            }
-
-            scanStatus = SCAN_PHASE_READ;
-            // TODO: set timer 10us
+        case PREV:
+            onPhasePrev();
             break;
 
-        case SCAN_PHASE_READ:
-            enable();
-
-            bool pressed = !(bitRead(NRF_GPIO->IN, KEY_READ_PIN));
-
-            if (pressed) {
-                matrix[row] |= 0b1 << col;
-            } else {
-                matrix[row] &= ~(0b1 << col);
-            }
-
-            scanStatus = SCAN_PHASE_RESET;
-
-            // TODO: set timer 5us
+        case READ:
+            onPhaseRead();
             break;
 
-        case SCAN_PHASE_RESET:
-            disable();
-
-            // 还没扫到最后一个键
-            if (row < MATRIX_ROWS - 1 && col < MATRIX_COLS - 1) {
-                scanStatus = SCAN_PHASE_SELECT;
-
-                col = (uint8_t) ((col + 1) % MATRIX_COLS);
-
-                if (col == 0) {
-                    row += 1;
-                }
-
-                // TODO: set timer 80us
-                break;
-            }
-
-            // 扫描结束，触发按键事件，确定是否休眠
-
-            scanStatus = SCAN_PHASE_END;
-
-            onMatrixScan(matrix, matrix_prev);
-
-            // TODO: power saving
-
-            // TODO: set timer
+        case RESET:
+            onPhaseReset();
             break;
     }
 }
@@ -202,7 +215,7 @@ void matrix_init(on_matrix_scan _onMatrixScan) {
 }
 
 void matrix_scanStart() {
-    scanStatus = SCAN_PHASE_END;
+    scanStatus = END;
     // TODO: set timer
 }
 
