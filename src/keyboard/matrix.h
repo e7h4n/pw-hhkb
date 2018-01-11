@@ -8,7 +8,6 @@
 #endif //PW_HHKB_MATRIX_H
 
 #include <stdint.h>
-#include <stdbool.h>
 
 typedef uint8_t matrix_row_t;
 
