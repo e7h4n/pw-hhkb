@@ -585,10 +585,6 @@ static uint32_t send_key_scan_press_release(ble_hids_t *p_hids,
         // Copy the scan code.
         memcpy(data + SCAN_CODE_POS + offset, p_key_pattern + offset, data_len - offset);
 
-        if (bsp_button_is_pressed(SHIFT_BUTTON_ID)) {
-            data[MODIFIER_KEY_POS] |= SHIFT_KEY_CODE;
-        }
-
         if (!m_in_boot_mode) {
             err_code = ble_hids_inp_rep_send(p_hids,
                                              INPUT_REPORT_KEYS_INDEX,

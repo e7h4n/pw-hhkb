@@ -97,10 +97,11 @@
 
 // TODO: 搞懂这个干什么的
 #define MODIFIER_KEY_POS 0 // Position of the modifier byte in the Input Report.
-#define SCAN_CODE_POS 2 // This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code.
-#define SHIFT_KEY_CODE 0x02 // Key code indicating the press of the Shift Key.
+/*
+ * This macro indicates the start position of the key scan code in a HID Report.
+ * As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11,
+ * each report shall have one modifier byte followed by a reserved constant byte and then the key scan code
+ */
+#define SCAN_CODE_POS 2
 
 #define MAX_KEYS_IN_ONE_REPORT (INPUT_REPORT_KEYS_MAX_LEN - SCAN_CODE_POS) // Maximum number of key presses that can be sent in one Input Report.
-
-#define MATRIX_ROWS 8
-#define MATRIX_COLS 8

@@ -9,6 +9,9 @@
 
 #include <stdint.h>
 
+#define MATRIX_ROWS 8
+#define MATRIX_COLS 8
+
 typedef uint8_t matrix_row_t;
 
 typedef void (*on_matrix_scan)(matrix_row_t *matrix, matrix_row_t *matrix_prev);
