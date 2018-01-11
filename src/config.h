@@ -101,3 +101,6 @@
 #define SHIFT_KEY_CODE 0x02 // Key code indicating the press of the Shift Key.
 
 #define MAX_KEYS_IN_ONE_REPORT (INPUT_REPORT_KEYS_MAX_LEN - SCAN_CODE_POS) // Maximum number of key presses that can be sent in one Input Report.
+
+#define MATRIX_ROWS 8
+#define MATRIX_COLS 8

@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 
+#define UNUSED __attribute__ ((unused))
+
 // convert to L string
 #define LSTR(s) XLSTR(s)
 #define XLSTR(s) L ## #s
@@ -38,3 +40,5 @@ uint8_t bitrev(uint8_t bits);
 uint16_t bitrev16(uint16_t bits);
 
 uint32_t bitrev32(uint32_t bits);
+
+void delayMicroseconds(int i);

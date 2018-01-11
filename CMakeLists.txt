@@ -34,6 +34,6 @@ list(APPEND SDK_SOURCE_FILES
 
 
 include_directories("./src")
-list(APPEND SOURCE_FILES "src/main.c" "src/matrix.c")
+list(APPEND SOURCE_FILES "src/main.c" "src/keyboard/matrix.c")
 
 nRF5x_addExecutable(${PROJECT_NAME} "${SOURCE_FILES}")
