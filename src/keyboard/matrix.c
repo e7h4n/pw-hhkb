@@ -4,6 +4,7 @@
 
 #include <nrf.h>
 #include <nrf_log.h>
+#include <app_timer.h>
 
 #include "util.h"
 #include "config.h"
@@ -14,9 +15,22 @@
 #define HYS_PIN 5
 #define KEY_READ_PIN 7
 #define MATRIX_POWER_PIN 8
+#define MAX_IDLE_TIME_SECONDS 600
+#define DURATION_TO_START APP_TIMER_TICKS(0, APP_TIMER_PRESCALER)
+#define DURATION_TO_UP APP_TIMER_TICKS(80, APP_TIMER_PRESCALER)
+#define DURATION_TO_UP_SLOW APP_TIMER_TICKS(10000, APP_TIMER_PRESCALER)
+#define DURATION_TO_SELECT APP_TIMER_TICKS(0, APP_TIMER_PRESCALER)
+#define DURATION_TO_SELECT_FROM_SLEEP APP_TIMER_TICKS(5, APP_TIMER_PRESCALER)
+#define DURATION_TO_PREV APP_TIMER_TICKS(5, APP_TIMER_PRESCALER)
+#define DURATION_TO_READ APP_TIMER_TICKS(10, APP_TIMER_PRESCALER)
+#define DURATION_TO_RESET APP_TIMER_TICKS(5, APP_TIMER_PRESCALER)
+#define ONE_SECOND APP_TIMER_TICKS(1 * 1000 * 1000, APP_TIMER_PRESCALER) // -O.O-
+
+APP_TIMER_DEF(matrixTimer);
+APP_TIMER_DEF(clockTimer);
 
 enum PHASE {
-    END = 1, SELECT, PREV, READ, RESET
+    UP = 1, SELECT, PREV, READ, RESET, STOPPED
 };
 
 static const int STANDBY_INPUT_GPIO = (0b111 << ROW_PIN_START)
@@ -48,12 +62,16 @@ static matrix_row_t _matrix1[MATRIX_ROWS];
 
 static uint8_t row = 0;
 static uint8_t col = 0;
-static enum PHASE scanStatus;
+static enum PHASE phase = STOPPED;
+static uint8_t idleSeconds = 0;
 
 static on_matrix_scan onMatrixScan;
 
 static void continueSelect();
+
 static void onScanComplete();
+
+static void delayToLoop(uint32_t ticks);
 
 static bool powerState() {
     return bitRead(NRF_GPIO->DIR, MATRIX_POWER_PIN) == GPIO_PIN_CNF_DIR_Output;
@@ -79,7 +97,7 @@ static void powerOn() {
     NRF_GPIO->OUT = bitSet(NRF_GPIO->OUT, MATRIX_POWER_PIN);
 }
 
-static void onPhaseEnd() {
+static void onPhaseUp() {
     row = 0;
     col = 0;
 
@@ -89,18 +107,21 @@ static void onPhaseEnd() {
     matrix_prev = matrix;
     matrix = tmp;
 
-    if (!powerState()) {
+    if (powerState()) {
+        delayToLoop(DURATION_TO_SELECT);
+    } else {
         powerOn();
+        delayToLoop(DURATION_TO_SELECT_FROM_SLEEP);
     }
 
-    scanStatus = SELECT;
-    // TODO: set timer
+    phase = SELECT;
 }
 
 static void onPhaseSelect() {
     NRF_GPIO->OUT = NRF_GPIO->OUT | (row << ROW_PIN_START) | (col << COL_PIN_START) | (1 << COL_CTRL_PIN);
-    scanStatus = PREV;
-    // TODO: set timer 5us
+    delayToLoop(DURATION_TO_PREV);
+
+    phase = PREV;
 }
 
 static void onPhasePrev() {
@@ -108,8 +129,9 @@ static void onPhasePrev() {
         NRF_GPIO->OUT |= 1 << HYS_PIN;
     }
 
-    scanStatus = READ;
-    // TODO: set timer 10us
+    delayToLoop(DURATION_TO_READ);
+
+    phase = READ;
 }
 
 static void onPhaseRead() {
@@ -123,9 +145,13 @@ static void onPhaseRead() {
         matrix[row] &= ~(0b1 << col);
     }
 
-    scanStatus = RESET;
+    if (col == MATRIX_COLS - 1 && (matrix[row] ^ matrix_prev[row])) {
+        idleSeconds = 0;
+    }
 
-    // TODO: set timer 5us
+    delayToLoop(DURATION_TO_RESET);
+
+    phase = RESET;
 }
 
 static void onPhaseReset() {
@@ -144,29 +170,36 @@ static void onPhaseReset() {
 }
 
 static void continueSelect() {
-    scanStatus = SELECT;
-
     col = (uint8_t) ((col + 1) % MATRIX_COLS);
 
     if (col == 0) {
         row += 1;
     }
 
-    // TODO: set timer 80us
+    delayToLoop(DURATION_TO_UP);
+
+    phase = SELECT;
 }
 
 static void onScanComplete() {
-    scanStatus = END;
-
     onMatrixScan(matrix, matrix_prev);
 
-    // TODO: power saving
+    if (idleSeconds >= MAX_IDLE_TIME_SECONDS) {
+        if (powerState()) {
+            powerOff();
+        }
 
-    // TODO: set timer
+        delayToLoop(DURATION_TO_UP_SLOW);
+    } else {
+        delayToLoop(DURATION_TO_UP);
+    }
+
+    phase = UP;
 }
 
+UNUSED
 /**
- * 完整扫描一个键需要 100us
+ * 100us for a full loop
  *                                   80us
  *                  +-----------------------------------+
  *                  |                                   |
@@ -175,14 +208,18 @@ static void onScanComplete() {
  *            |           5us        10us        5us            |
  *  SCAN_RATE |                                                 | 80us
  *            |                                                 |
- *            +----------------------END<-----------------------+
+ *            +-----------------------UP<-----------------------+
  *
  */
-UNUSED
-static void loop() {
-    switch (scanStatus) {
-        case END:
-            onPhaseEnd();
+static void loop(void *context) {
+    UNUSED_PARAMETER(context);
+
+    switch (phase) {
+        case STOPPED:
+            break;
+
+        case UP:
+            onPhaseUp();
             break;
 
         case SELECT:
@@ -203,6 +240,18 @@ static void loop() {
     }
 }
 
+static void clock(void *context) {
+    UNUSED_PARAMETER(context);
+
+    idleSeconds++;
+}
+
+static void delayToLoop(uint32_t ticks) {
+    app_timer_stop(matrixTimer);
+
+    APP_ERROR_CHECK(app_timer_start(matrixTimer, ticks, NULL));
+}
+
 void matrix_init(on_matrix_scan _onMatrixScan) {
     onMatrixScan = _onMatrixScan;
 
@@ -211,17 +260,41 @@ void matrix_init(on_matrix_scan _onMatrixScan) {
     matrix = _matrix0;
     matrix_prev = _matrix1;
 
+    idleSeconds = 0;
+
+    APP_ERROR_CHECK(app_timer_create(&matrixTimer, APP_TIMER_MODE_SINGLE_SHOT, loop));
+    APP_ERROR_CHECK(app_timer_create(&clockTimer, APP_TIMER_MODE_REPEATED, clock));
+
     powerOff();
+
+    phase = STOPPED;
 }
 
 void matrix_scanStart() {
-    scanStatus = END;
-    // TODO: set timer
+    if (phase != STOPPED) {
+        return;
+    }
+
+    idleSeconds = 0;
+
+    phase = UP;
+
+    delayToLoop(DURATION_TO_START);
+
+    app_timer_stop(clockTimer);
+    APP_ERROR_CHECK(app_timer_start(clockTimer, ONE_SECOND, NULL));
 }
 
-void matrix_scanEnd() {
-    // TODO: unset timer
-    // TODO: 确定是否需要休眠
+void matrix_scanStop() {
+    if (phase == STOPPED) {
+        return;
+    }
+
+    APP_ERROR_CHECK(app_timer_stop(matrixTimer));
+    APP_ERROR_CHECK(app_timer_stop(clockTimer));
+    powerOff();
+
+    phase = STOPPED;
 }
 
 void matrix_print(void) {

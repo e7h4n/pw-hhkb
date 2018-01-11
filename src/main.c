@@ -23,6 +23,8 @@
 
 #include "main.h"
 
+APP_TIMER_DEF(m_battery_timer_id);
+
 // TODO: 理解 assert 机制, 处理系统 assert
 void assert_nrf_callback(uint16_t line_num, const uint8_t *p_file_name) {
     app_error_handler(DEAD_BEEF, line_num, p_file_name);

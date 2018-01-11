@@ -64,8 +64,6 @@ static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the curr
 static sensorsim_cfg_t m_battery_sim_cfg; /**< Battery Level sensor simulator configuration. */
 static sensorsim_state_t m_battery_sim_state; /**< Battery Level sensor simulator state. */
 
-APP_TIMER_DEF(m_battery_timer_id); /**< Battery timer. */
-
 static pm_peer_id_t m_peer_id; /**< Device reference handle to the current bonded central. */
 static bool m_caps_on = false; /**< Variable to indicate if Caps Lock is turned on. */
 
