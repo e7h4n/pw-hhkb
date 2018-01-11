@@ -151,7 +151,6 @@ uint8_t matrix_scan(void) {
             delayMicroseconds(10);
 
             enable();
-            delayMicroseconds(5);
 
             int pressed = bitRead(NRF_GPIO->IN, KEY_READ_PIN);
 
@@ -166,7 +165,7 @@ uint8_t matrix_scan(void) {
 
             delayMicroseconds(5);
             disable();
-            delayMicroseconds(75);
+            delayMicroseconds(35);
         }
     }
 //
