@@ -35,25 +35,27 @@ list(APPEND SDK_SOURCE_FILES
 
 include_directories(
         "./src"
-        "./src/service"
         "./src/keyboard"
+        "./src/service"
+        "./src/util"
 )
+
 list(
         APPEND
         SOURCE_FILES
         "src/main.c"
-        "src/keyboard/matrix.c"
         "src/keyboard/keyboard.c"
-        "src/service/battery.c"
-        "src/service/device.c"
-        "src/service/peer_manager.c"
-        "src/service/ble.c"
-        "src/service/hid.c"
-        "src/service/connection.c"
+        "src/keyboard/matrix.c"
         "src/service/advertising.c"
+        "src/service/battery.c"
+        "src/service/ble.c"
+        "src/service/connection.c"
+        "src/service/device.c"
+        "src/service/hid.c"
+        "src/service/peer_manager.c"
         "src/util/buffer.c"
-        "src/util/util.c"
         "src/util/error.c"
+        "src/util/util.c"
 )
 
 nRF5x_addExecutable(${PROJECT_NAME} "${SOURCE_FILES}")
