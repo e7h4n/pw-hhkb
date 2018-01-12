@@ -1,16 +1,15 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "CONNECTION"
 
-#include "connection.h"
+#include <nrf_log.h>
 
-#include <sched.h>
-#include <common/ble_conn_params.h>
-#include <memory.h>
-#include <src/config.h>
+#include "src/service/connection.h"
+
 #include <app_timer.h>
+#include <common/ble_conn_params.h>
 
-static void conn_params_error_handler(uint32_t nrf_error);
+#include "src/config.h"
+
+static void _errorHandler(uint32_t nrf_error);
 
 void connection_init() {
     uint32_t err_code;
@@ -25,13 +24,12 @@ void connection_init() {
     cp_init.start_on_notify_cccd_handle = BLE_GATT_HANDLE_INVALID;
     cp_init.disconnect_on_fail = false;
     cp_init.evt_handler = NULL;
-    cp_init.error_handler = conn_params_error_handler;
+    cp_init.error_handler = _errorHandler;
 
     err_code = ble_conn_params_init(&cp_init);
     APP_ERROR_CHECK(err_code);
 }
 
-
-static void conn_params_error_handler(uint32_t nrf_error) {
+static void _errorHandler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);
 }

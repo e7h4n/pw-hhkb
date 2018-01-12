@@ -1,13 +1,11 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "BUFFER"
 
-#include <src/util/buffer.h>
-#include <src/config.h>
+#include "src/util/buffer.h"
 
-/**Buffer queue access macros */
+#include <nrf_log.h>
 
-/** Initialization of buffer list */
+#include "src/config.h"
+
 #define BUFFER_LIST_INIT() \
  do \
  { \
@@ -16,11 +14,9 @@
  buffer_list.count = 0; \
  } while (0)
 
-/** Provide status of data list is full or not */
 #define BUFFER_LIST_FULL() \
  ((MAX_BUFFER_ENTRIES == buffer_list.count - 1) ? true : false)
 
-/** Provides status of buffer list is empty or not */
 #define BUFFER_LIST_EMPTY() \
  ((0 == buffer_list.count) ? true : false)
 
@@ -30,7 +26,6 @@
  buffer_list.buffer[(i)].p_data = NULL; \
  } while (0)
 
-/** Abstracts buffer element */
 typedef struct hid_key_buffer {
     uint8_t data_offset; /**< Max Data that can be buffered for all entries */
     uint8_t data_len; /**< Total length of data */
@@ -38,7 +33,6 @@ typedef struct hid_key_buffer {
     ble_hids_t *p_instance; /**< Identifies peer and service instance */
 } buffer_entry_t;STATIC_ASSERT(sizeof(buffer_entry_t) % 4 == 0);
 
-/** Circular buffer list */
 typedef struct {
     buffer_entry_t buffer[MAX_BUFFER_ENTRIES]; /**< Maximum number of entries that can enqueued in the list */
     uint8_t rp; /**< Index to the read location */
@@ -46,7 +40,6 @@ typedef struct {
     uint8_t count; /**< Number of elements in the list */
 } buffer_list_t;STATIC_ASSERT(sizeof(buffer_list_t) % 4 == 0);
 
-/** List to enqueue not just data to be sent, but also related information like the handle, connection handle etc */
 static buffer_list_t buffer_list;
 
 void buffer_init() {

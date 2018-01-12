@@ -1,26 +1,28 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "BATTERY"
 
-#include "battery.h"
+#include "src/service/battery.h"
 
 #include <app_timer.h>
 #include <app_timer_appsh.h>
-#include <memory.h>
-#include <src/config.h>
+#include <nrf_log.h>
+
+#include "src/config.h"
+
+static void _batteryLevelUpdate(void);
+
+static void _batteryLevelMeasTimeoutHandler(void *p_context);
+
+static void _batteryTimersInit();
+
+static void _sensorSimulatorInit(void);
 
 APP_TIMER_DEF(m_battery_timer_id);
 
-static sensorsim_cfg_t m_battery_sim_cfg; /**< Battery Level sensor simulator configuration. */
-static sensorsim_state_t m_battery_sim_state; /**< Battery Level sensor simulator state. */
+static sensorsim_cfg_t m_battery_sim_cfg;
+static sensorsim_state_t m_battery_sim_state;
+static ble_bas_t m_bas;
 
-static ble_bas_t m_bas; /**< Structure used to identify the battery service. */
-
-static void batteryTimersInit();
-
-static void sensorSimulatorInit(void);
-
-ble_bas_t* battery_service() {
+ble_bas_t *battery_service() {
     return &m_bas;
 }
 
@@ -44,8 +46,8 @@ void battery_init(void) {
     err_code = ble_bas_init(&m_bas, &bas_init_obj);
     APP_ERROR_CHECK(err_code);
 
-    batteryTimersInit();
-    sensorSimulatorInit();
+    _batteryTimersInit();
+    _sensorSimulatorInit();
 }
 
 void battery_active(void) {
@@ -56,9 +58,27 @@ void battery_deactive(void) {
     APP_ERROR_CHECK(app_timer_stop(m_battery_timer_id));
 }
 
-/**@brief Function for performing a battery measurement, and update the Battery Level characteristic in the Battery Service.
- */
-static void batteryLevelUpdate(void) {
+static void _batteryTimersInit(void) {
+    APP_TIMER_APPSH_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, true);
+
+    APP_ERROR_CHECK(app_timer_create(&m_battery_timer_id, APP_TIMER_MODE_REPEATED, _batteryLevelMeasTimeoutHandler));
+}
+
+static void _sensorSimulatorInit(void) {
+    m_battery_sim_cfg.min = MIN_BATTERY_LEVEL;
+    m_battery_sim_cfg.max = MAX_BATTERY_LEVEL;
+    m_battery_sim_cfg.incr = BATTERY_LEVEL_INCREMENT;
+    m_battery_sim_cfg.start_at_max = true;
+
+    sensorsim_init(&m_battery_sim_state, &m_battery_sim_cfg);
+}
+
+static void _batteryLevelMeasTimeoutHandler(void *p_context) {
+    UNUSED_PARAMETER(p_context);
+    _batteryLevelUpdate();
+}
+
+static void _batteryLevelUpdate(void) {
     uint32_t err_code;
     uint8_t battery_level;
 
@@ -72,24 +92,4 @@ static void batteryLevelUpdate(void) {
             ) {
         APP_ERROR_HANDLER(err_code);
     }
-}
-
-static void batteryLevelMeasTimeoutHandler(void *p_context) {
-    UNUSED_PARAMETER(p_context);
-    batteryLevelUpdate();
-}
-
-static void batteryTimersInit(void) {
-    APP_TIMER_APPSH_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, true);
-
-    APP_ERROR_CHECK(app_timer_create(&m_battery_timer_id, APP_TIMER_MODE_REPEATED, batteryLevelMeasTimeoutHandler));
-}
-
-static void sensorSimulatorInit(void) {
-    m_battery_sim_cfg.min = MIN_BATTERY_LEVEL;
-    m_battery_sim_cfg.max = MAX_BATTERY_LEVEL;
-    m_battery_sim_cfg.incr = BATTERY_LEVEL_INCREMENT;
-    m_battery_sim_cfg.start_at_max = true;
-
-    sensorsim_init(&m_battery_sim_state, &m_battery_sim_cfg);
 }

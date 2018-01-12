@@ -1,30 +1,26 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "PEER_MANAGER"
 
-#include "peer_manager.h"
+#include "src/service/peer_manager.h"
 
-#include <sdk_common.h>
-#include <peer_manager/peer_manager.h>
-#include <nrf_log.h>
 #include <common/ble_conn_state.h>
-#include <src/main.h>
 #include <fds.h>
-#include <src/config.h>
+#include <nrf_log.h>
+#include <peer_manager/peer_manager.h>
 
-#include "advertising.h"
+#include "src/config.h"
+#include "src/service/advertising.h"
 
 static pm_peer_id_t m_peer_id; /**< Device reference handle to the current bonded central. */
 static pm_peer_id_t m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT]; /**< List of peers currently in the whitelist. */
 static uint32_t m_whitelist_peer_cnt; /**< Number of peers currently in the whitelist. */
 static bool m_is_wl_changed; /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
 
-static void eventHandler(pm_evt_t const *p_evt);
+static void _eventHandler(pm_evt_t const *p_evt);
 
-static void whitelistInit();
+static void _whitelistInit();
 
 void peerManager_init() {
-    whitelistInit();
+    _whitelistInit();
 
     ble_gap_sec_params_t sec_param;
     ret_code_t err_code;
@@ -51,7 +47,7 @@ void peerManager_init() {
     err_code = pm_sec_params_set(&sec_param);
     APP_ERROR_CHECK(err_code);
 
-    err_code = pm_register(eventHandler);
+    err_code = pm_register(_eventHandler);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -90,7 +86,7 @@ void peerManager_getPeers(uint16_t *p_peers, __uint32_t *p_size) {
     }
 }
 
-static void eventHandler(pm_evt_t const *p_evt) {
+static void _eventHandler(pm_evt_t const *p_evt) {
     ret_code_t err_code;
 
     switch (p_evt->evt_id) {
@@ -197,7 +193,7 @@ static void eventHandler(pm_evt_t const *p_evt) {
     }
 }
 
-static void whitelistInit() {
+static void _whitelistInit() {
     memset(m_whitelist_peers, PM_PEER_ID_INVALID, sizeof(m_whitelist_peers));
     m_whitelist_peer_cnt = (sizeof(m_whitelist_peers) / sizeof(pm_peer_id_t));
 

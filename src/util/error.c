@@ -1,11 +1,10 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "ERROR"
 
-#include "error.h"
 
 #include <app_error.h>
-#include <src/config.h>
+
+#include "src/config.h"
+#include "src/util/error.h"
 
 void error_handler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);

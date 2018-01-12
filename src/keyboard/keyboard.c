@@ -1,11 +1,11 @@
-//
-// Created by 张宇辰 on 11/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "KEYBOARD"
 
-#include <src/util/util.h>
-#include <keyboard/keyboard.h>
-#include <keyboard/matrix.h>
-#include <sched.h>
+#include "src/keyboard/keyboard.h"
+
+#include <nrf_log.h>
+
+#include "src/keyboard/matrix.h"
+#include "src/util/util.h"
 
 #define KEYBOARD_HID_KEYCODE_MODIFIER_MIN 0xE0
 #define KEYBOARD_HID_KEYCODE_MODIFIER_MAX 0xE7
@@ -37,21 +37,23 @@ uint8_t KEYMAP_FN_MODE[MATRIX_ROWS][MATRIX_COLS] = {
         {0x44/* F11 */, 0x45/* F12 */,  KEYBOARD_UNUSED,   0x52/* UpArrow */, 0x4F/* RightArrow */, 0x51/* DownArrow */, 0x4E/* PgDn */, KEYBOARD_UNUSED}
 };
 
-static void onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev);
+static void _onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev);
 
-static uint8_t getKeyCode(uint8_t row, uint8_t col, bool withFn);
+static uint8_t _getKeyCode(uint8_t row, uint8_t col, bool withFn);
 
-static keyboard_eventHandler eventHandler;
-static uint8_t keyCodes[KEYBOARD_MAX_KEYS] = {0};
-static uint8_t fnKeys[MATRIX_ROWS];
+static keyboard_eventHandler _eventHandler;
+
+static uint8_t _keyCodes[KEYBOARD_MAX_KEYS] = {0};
+
+static uint8_t _fnKeys[MATRIX_ROWS];
 
 void keyboard_init(keyboard_eventHandler keyboardEventHandler) {
-    eventHandler = keyboardEventHandler;
+    _eventHandler = keyboardEventHandler;
 
     for (int i = 0; i < MATRIX_ROWS; i++) {
-        fnKeys[i] = 0;
+        _fnKeys[i] = 0;
     }
-    matrix_init(onMatrixScan);
+    matrix_init(_onMatrixScan);
 }
 
 void keyboard_deactive() {
@@ -62,7 +64,7 @@ void keyboard_active() {
     matrix_active();
 }
 
-static void onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev) {
+static void _onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev) {
     uint8_t modifiers = 0x00;
     matrix_row_t matrix_row = 0;
     matrix_row_t matrix_change = 0;
@@ -84,9 +86,9 @@ static void onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev) {
 
             if (withFn) {
                 if (pressed) {
-                    bitSet(fnKeys[row], col);
+                    bitSet(_fnKeys[row], col);
                 } else {
-                    bitClear(fnKeys[row], col);
+                    bitClear(_fnKeys[row], col);
                 }
             }
 
@@ -94,32 +96,32 @@ static void onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev) {
                 continue;
             }
 
-            hidKeyCode = getKeyCode(row, col, bitRead(fnKeys[row], col) > 0);
+            hidKeyCode = _getKeyCode(row, col, bitRead(_fnKeys[row], col) > 0);
 
             if (hidKeyCode >= KEYBOARD_HID_KEYCODE_MODIFIER_MIN &&
                 hidKeyCode <= KEYBOARD_HID_KEYCODE_MODIFIER_MAX) {
                 modifiers |= (1 << (hidKeyCode - KEYBOARD_HID_KEYCODE_MODIFIER_MIN));
             } else if (keyLen < KEYBOARD_MAX_KEYS) {
                 if (hidKeyCode != KEYBOARD_UNUSED) {
-                    keyCodes[keyLen++] = hidKeyCode;
+                    _keyCodes[keyLen++] = hidKeyCode;
                 }
             }
         }
     }
 
-    if (eventHandler != NULL) {
-        eventHandler(modifiers,
-                         (uint8_t) (keyLen > 0 ? keyCodes[0] : KEYBOARD_UNUSED),
-                         (uint8_t) (keyLen > 1 ? keyCodes[1] : KEYBOARD_UNUSED),
-                         (uint8_t) (keyLen > 2 ? keyCodes[2] : KEYBOARD_UNUSED),
-                         (uint8_t) (keyLen > 3 ? keyCodes[3] : KEYBOARD_UNUSED),
-                         (uint8_t) (keyLen > 4 ? keyCodes[4] : KEYBOARD_UNUSED),
-                         (uint8_t) (keyLen > 5 ? keyCodes[5] : KEYBOARD_UNUSED)
+    if (_eventHandler != NULL) {
+        _eventHandler(modifiers,
+                      (uint8_t) (keyLen > 0 ? _keyCodes[0] : KEYBOARD_UNUSED),
+                      (uint8_t) (keyLen > 1 ? _keyCodes[1] : KEYBOARD_UNUSED),
+                      (uint8_t) (keyLen > 2 ? _keyCodes[2] : KEYBOARD_UNUSED),
+                      (uint8_t) (keyLen > 3 ? _keyCodes[3] : KEYBOARD_UNUSED),
+                      (uint8_t) (keyLen > 4 ? _keyCodes[4] : KEYBOARD_UNUSED),
+                      (uint8_t) (keyLen > 5 ? _keyCodes[5] : KEYBOARD_UNUSED)
         );
     }
 }
 
-static uint8_t getKeyCode(uint8_t row, uint8_t col, bool withFn) {
+static uint8_t _getKeyCode(uint8_t row, uint8_t col, bool withFn) {
     if (!withFn) {
         return KEYMAP_NORMAL_MODE[row][col];
     }

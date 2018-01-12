@@ -1,22 +1,20 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
-
 #define NRF_LOG_MODULE_NAME "ADVERTISING"
-#include <nrf_log.h>
 
-#include "advertising.h"
+#include "src/service/advertising.h"
 
-#include <peer_manager/peer_manager.h>
 #include <ble_advertising/ble_advertising.h>
 #include <common/ble_srv_common.h>
-#include <src/config.h>
-#include "peer_manager.h"
+#include <nrf_log.h>
+#include <peer_manager/peer_manager.h>
+
+#include "src/config.h"
+#include "src/service/peer_manager.h"
 
 static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE, BLE_UUID_TYPE_BLE}};
 
-static void errorHandler(uint32_t nrf_error);
-static void advertising_eventHandler(ble_adv_evt_t ble_adv_evt);
+static void _errorHandler(uint32_t nrf_error);
+
+static void _eventHandler(ble_adv_evt_t ble_adv_evt);
 
 void advertising_active() {
     APP_ERROR_CHECK(ble_advertising_start(BLE_ADV_MODE_FAST));
@@ -55,15 +53,15 @@ void advertising_init() {
     APP_ERROR_CHECK(ble_advertising_init(&advdata,
                                          NULL,
                                          &options,
-                                         (ble_advertising_evt_handler_t const) advertising_eventHandler,
-                                         errorHandler));
+                                         (ble_advertising_evt_handler_t const) _eventHandler,
+                                         _errorHandler));
 }
 
-static void errorHandler(uint32_t nrf_error) {
+static void _errorHandler(uint32_t nrf_error) {
     APP_ERROR_HANDLER(nrf_error);
 }
 
-static void advertising_eventHandler(ble_adv_evt_t ble_adv_evt) {
+static void _eventHandler(ble_adv_evt_t ble_adv_evt) {
     uint32_t err_code;
 
     switch (ble_adv_evt) {

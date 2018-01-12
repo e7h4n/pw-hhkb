@@ -1,15 +1,13 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "DEVICE"
 
-#include <sched.h>
-#include <ble_services/ble_dis/ble_dis.h>
-#include <src/config.h>
-#include <memory.h>
+#include "src/service/device.h"
+
 #include <app_error.h>
+#include <ble_services/ble_dis/ble_dis.h>
+#include <memory.h>
 
-/**@brief Function for initializing Device Information Service.
- */
+#include "src/config.h"
+
 void device_init() {
     uint32_t err_code;
     ble_dis_init_t dis_init_obj;

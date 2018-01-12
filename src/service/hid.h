@@ -7,6 +7,8 @@
 
 #endif //PW_HHKB_HID_H
 
+#include <ble_hids.h>
+
 void hid_init();
 
 ble_hids_t* hid_service();

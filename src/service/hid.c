@@ -1,20 +1,22 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "HID"
 
-#include <ble_services/ble_hids/ble_hids.h>
-#include <nrf_log.h>
-#include <src/util/error.h>
-#include <src/config.h>
+#include "src/service/hid.h"
+
 #include <app_error.h>
-#include <src/keyboard/keyboard.h>
-#include "hid.h"
+#include <nrf_log.h>
+
+#include "src/config.h"
+#include "src/keyboard/keyboard.h"
+#include "src/util/error.h"
+
+static void _onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt);
+
+static void _onHidRepCharWrite(ble_hids_evt_t *p_evt);
+
+static void _onKeyboardEvent(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
+                             uint8_t key4, uint8_t key5);
 
 static ble_hids_t m_hids; /**< Structure used to identify the HID service. */
-
-static void onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt);
-static void onKeyboardEvent(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
-                            uint8_t key4, uint8_t key5);
 
 ble_hids_t *hid_service() {
     return &m_hids;
@@ -100,7 +102,7 @@ void hid_init() {
 
     memset(&hids_init_obj, 0, sizeof(hids_init_obj));
 
-    hids_init_obj.evt_handler = onHidEvt;
+    hids_init_obj.evt_handler = _onHidEvt;
     hids_init_obj.error_handler = error_handler;
     hids_init_obj.is_kb = true;
     hids_init_obj.is_mouse = false;
@@ -138,15 +140,36 @@ void hid_init() {
     err_code = ble_hids_init(&m_hids, &hids_init_obj);
     APP_ERROR_CHECK(err_code);
 
-    keyboard_init(onKeyboardEvent);
+    keyboard_init(_onKeyboardEvent);
 }
 
-static void onKeyboardEvent(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
-                              uint8_t key4, uint8_t key5) {
+static void _onKeyboardEvent(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
+                             uint8_t key4, uint8_t key5) {
     // TODO: send hid event
 }
 
-static void onHidRepCharWrite(ble_hids_evt_t *p_evt) {
+static void _onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt) {
+    switch (p_evt->evt_type) {
+        case BLE_HIDS_EVT_BOOT_MODE_ENTERED:
+            break;
+
+        case BLE_HIDS_EVT_REPORT_MODE_ENTERED:
+            break;
+
+        case BLE_HIDS_EVT_REP_CHAR_WRITE:
+            _onHidRepCharWrite(p_evt);
+            break;
+
+        case BLE_HIDS_EVT_NOTIF_ENABLED:
+            break;
+
+        default:
+            // No implementation needed.
+            break;
+    }
+}
+
+static void _onHidRepCharWrite(ble_hids_evt_t *p_evt) {
     if (p_evt->params.char_write.char_id.rep_type == BLE_HIDS_REP_TYPE_OUTPUT) {
         uint32_t err_code;
         uint8_t report_val;
@@ -164,26 +187,5 @@ static void onHidRepCharWrite(ble_hids_evt_t *p_evt) {
                                              &report_val);
             APP_ERROR_CHECK(err_code);
         }
-    }
-}
-
-static void onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt) {
-    switch (p_evt->evt_type) {
-        case BLE_HIDS_EVT_BOOT_MODE_ENTERED:
-            break;
-
-        case BLE_HIDS_EVT_REPORT_MODE_ENTERED:
-            break;
-
-        case BLE_HIDS_EVT_REP_CHAR_WRITE:
-            onHidRepCharWrite(p_evt);
-            break;
-
-        case BLE_HIDS_EVT_NOTIF_ENABLED:
-            break;
-
-        default:
-            // No implementation needed.
-            break;
     }
 }

@@ -1,37 +1,33 @@
-//
-// Created by Ethan Zhang on 12/01/2018.
-//
+#define NRF_LOG_MODULE_NAME "BLE"
 
 #include "src/service/ble.h"
 
-#include <sched.h>
-#include <ble_gap.h>
-#include <src/config.h>
-#include <memory.h>
 #include <app_error.h>
-#include <app_util.h>
 #include <ble.h>
-#include <nrf_log.h>
-#include <src/util/buffer.h>
-#include <peer_manager/peer_manager.h>
-#include <common/ble_conn_state.h>
 #include <ble_advertising/ble_advertising.h>
-#include <common/ble_conn_params.h>
-#include <softdevice_handler.h>
 #include <ble_services/ble_bas/ble_bas.h>
+#include <common/ble_conn_params.h>
+#include <common/ble_conn_state.h>
+#include <nrf_log.h>
+#include <peer_manager/peer_manager.h>
+#include <softdevice_handler.h>
 
+#include "src/config.h"
+#include "src/service/advertising.h"
+#include "src/service/battery.h"
+#include "src/service/connection.h"
+#include "src/service/device.h"
+#include "src/service/hid.h"
 #include "src/service/peer_manager.h"
-#include "hid.h"
-#include "battery.h"
-#include "connection.h"
-#include "advertising.h"
-#include "device.h"
+#include "src/util/buffer.h"
 
-static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the current connection. */
+static void _onBleEvt(ble_evt_t *p_ble_evt);
 
-static void bleEvtDispatch(ble_evt_t *p_ble_evt);
+static void _bleEvtDispatch(ble_evt_t *p_ble_evt);
 
-static void gapParamsInit(void);
+static void _gapParamsInit(void);
+
+static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 void ble_init(void) {
     uint32_t err_code;
@@ -53,15 +49,15 @@ void ble_init(void) {
     APP_ERROR_CHECK(softdevice_enable(&ble_enable_params));
 
     // Register with the SoftDevice handler module for BLE events.
-    APP_ERROR_CHECK(softdevice_ble_evt_handler_set(bleEvtDispatch));
+    APP_ERROR_CHECK(softdevice_ble_evt_handler_set(_bleEvtDispatch));
 
     device_init();
-    gapParamsInit();
+    _gapParamsInit();
     connection_init();
     advertising_init();
 }
 
-static void gapParamsInit(void) {
+static void _gapParamsInit(void) {
     uint32_t err_code;
     ble_gap_conn_params_t gap_conn_params;
     ble_gap_conn_sec_mode_t sec_mode;
@@ -87,7 +83,19 @@ static void gapParamsInit(void) {
     APP_ERROR_CHECK(err_code);
 }
 
-static void onBleEvt(ble_evt_t *p_ble_evt) {
+static void _bleEvtDispatch(ble_evt_t *p_ble_evt) {
+    /** The Connection state module has to be fed BLE events in order to function correctly
+     * Remember to call ble_conn_state_on_ble_evt before calling any ble_conns_state_* functions. */
+    ble_conn_state_on_ble_evt(p_ble_evt);
+    pm_on_ble_evt(p_ble_evt);
+    _onBleEvt(p_ble_evt);
+    ble_advertising_on_ble_evt(p_ble_evt);
+    ble_conn_params_on_ble_evt(p_ble_evt);
+    ble_hids_on_ble_evt(hid_service(), p_ble_evt);
+    ble_bas_on_ble_evt(battery_service(), p_ble_evt);
+}
+
+static void _onBleEvt(ble_evt_t *p_ble_evt) {
     uint32_t err_code;
 
     switch (p_ble_evt->header.evt_id) {
@@ -170,16 +178,4 @@ static void onBleEvt(ble_evt_t *p_ble_evt) {
             // No implementation needed.
             break;
     }
-}
-
-static void bleEvtDispatch(ble_evt_t *p_ble_evt) {
-    /** The Connection state module has to be fed BLE events in order to function correctly
-     * Remember to call ble_conn_state_on_ble_evt before calling any ble_conns_state_* functions. */
-    ble_conn_state_on_ble_evt(p_ble_evt);
-    pm_on_ble_evt(p_ble_evt);
-    onBleEvt(p_ble_evt);
-    ble_advertising_on_ble_evt(p_ble_evt);
-    ble_conn_params_on_ble_evt(p_ble_evt);
-    ble_hids_on_ble_evt(hid_service(), p_ble_evt);
-    ble_bas_on_ble_evt(battery_service(), p_ble_evt);
 }

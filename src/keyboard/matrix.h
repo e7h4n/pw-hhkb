@@ -14,9 +14,9 @@
 
 typedef uint8_t matrix_row_t;
 
-typedef void (*on_matrix_scan)(matrix_row_t *matrix, matrix_row_t *matrix_prev);
+typedef void (*matrix_scanEventHandler)(matrix_row_t *matrix, matrix_row_t *matrix_prev);
 
-void matrix_init(on_matrix_scan onMatrixScan);
+void matrix_init(matrix_scanEventHandler onMatrixScan);
 
 void matrix_active();
 
