@@ -16,7 +16,15 @@ static void _onHidRepCharWrite(ble_hids_evt_t *p_evt);
 static void _onKeyboardEvent(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
                              uint8_t key4, uint8_t key5);
 
+static uint32_t _sendKeyEvent(ble_hids_t *p_hids,
+                              uint8_t *p_key_pattern,
+                              uint16_t pattern_len,
+                              uint16_t pattern_offset,
+                              uint16_t *p_actual_len);
+
 static ble_hids_t m_hids; /**< Structure used to identify the HID service. */
+
+static bool m_in_boot_mode = false;
 
 ble_hids_t *hid_service() {
     return &m_hids;
@@ -149,11 +157,15 @@ static void _onKeyboardEvent(uint8_t modifiers, uint8_t key0, uint8_t key1, uint
 }
 
 static void _onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt) {
+    UNUSED_PARAMETER(p_hids);
+
     switch (p_evt->evt_type) {
         case BLE_HIDS_EVT_BOOT_MODE_ENTERED:
+            m_in_boot_mode = true;
             break;
 
         case BLE_HIDS_EVT_REPORT_MODE_ENTERED:
+            m_in_boot_mode = false;
             break;
 
         case BLE_HIDS_EVT_REP_CHAR_WRITE:
@@ -188,4 +200,37 @@ static void _onHidRepCharWrite(ble_hids_evt_t *p_evt) {
             APP_ERROR_CHECK(err_code);
         }
     }
+}
+
+/**@brief   Function for transmitting a key scan Press & Release Notification.
+ *
+ * @warning This handler is an example only. You need to analyze how you wish to send the key
+ *          release.
+ *
+ * @param[in]  p_instance     Identifies the service for which Key Notifications are requested.
+ * @param[in]  p_key_pattern  Pointer to key pattern.
+ * @param[in]  pattern_len    Length of key pattern. 0 < pattern_len < 7.
+ * @param[in]  pattern_offset Offset applied to Key Pattern for transmission.
+ * @param[out] actual_len     Provides actual length of Key Pattern transmitted, making buffering of
+ *                            rest possible if needed.
+ * @return     NRF_SUCCESS on success, BLE_ERROR_NO_TX_BUFFERS in case transmission could not be
+ *             completed due to lack of transmission buffer or other error codes indicating reason
+ *             for failure.
+ */
+static uint32_t _sendKeyEvent(ble_hids_t *p_hids, uint8_t *p_key_pattern, uint16_t pattern_len, uint16_t pattern_offset,
+                              uint16_t *p_actual_len) {
+    uint32_t err_code;
+
+    if (!m_in_boot_mode) {
+        err_code = ble_hids_inp_rep_send(&m_hids,
+                                         INPUT_REPORT_KEYS_INDEX,
+                                         INPUT_REPORT_KEYS_MAX_LEN,
+                                         p_key_pattern);
+    } else {
+        err_code = ble_hids_boot_kb_inp_rep_send(&m_hids,
+                                                 INPUT_REPORT_KEYS_MAX_LEN,
+                                                 p_key_pattern);
+    }
+
+    return err_code;
 }
