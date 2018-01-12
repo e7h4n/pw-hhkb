@@ -1,6 +1,10 @@
-#include "main.h"
+
 
 #define NRF_LOG_MODULE_NAME "APP"
+
+void timer_init();
+
+void sched_init();
 
 #include "nrf_log_ctrl.h"
 
@@ -11,13 +15,11 @@
 #include <src/util/buffer.h>
 #include <src/service/ble.h>
 #include <src/service/hid.h>
-#include <src/service/connection.h>
 #include <src/keyboard/keyboard.h>
 #include <fstorage.h>
 #include <src/service/advertising.h>
 #include <src/util/util.h>
 
-#include "service/device.h"
 #include "service/battery.h"
 #include "config.h"
 
@@ -35,25 +37,21 @@ static void sys_evt_dispatch(uint32_t sys_evt) {
 int main(void) {
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
 
-    // Initialize timer module, making it use the scheduler.
-    APP_TIMER_APPSH_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, true);
-    ble_init();
-
-    // Register with the SoftDevice handler module for BLE events.
-    APP_ERROR_CHECK(softdevice_sys_evt_handler_set(sys_evt_dispatch));
-
-    APP_SCHED_INIT(SCHED_MAX_EVENT_DATA_SIZE, SCHED_QUEUE_SIZE);
-    advertising_init();
-    device_init();
-    battery_active();
-    hid_init();
-    connection_init();
+    timer_init();
+    sched_init();
     buffer_init();
 
-    // TODO: start
-    advertising_start();
+    ble_init();
+    battery_init();
+    hid_init();
 
-    while (1) {
+    battery_active();
+    keyboard_active();
+    advertising_active();
+
+    APP_ERROR_CHECK(softdevice_sys_evt_handler_set(sys_evt_dispatch));
+
+    while (true) {
         app_sched_execute();
 
         if (NRF_LOG_PROCESS() == false) {
@@ -62,10 +60,10 @@ int main(void) {
     }
 }
 
-/**@brief Function for putting the chip into sleep mode.
- *
- * @note This function will not return.
- */
+void sched_init() { APP_SCHED_INIT(SCHED_MAX_EVENT_DATA_SIZE, SCHED_QUEUE_SIZE); }
+
+void timer_init() { APP_TIMER_APPSH_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, true); }
+
 UNUSED_METHOD
 static void sleep_mode_enter(void) {
     keyboard_deactive();

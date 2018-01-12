@@ -9,4 +9,4 @@
 
 void advertising_init();
 
-void advertising_start();
+void advertising_active();

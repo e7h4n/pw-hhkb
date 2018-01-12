@@ -23,6 +23,9 @@
 #include "src/service/peer_manager.h"
 #include "hid.h"
 #include "battery.h"
+#include "connection.h"
+#include "advertising.h"
+#include "device.h"
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle of the current connection. */
 
@@ -52,7 +55,10 @@ void ble_init(void) {
     // Register with the SoftDevice handler module for BLE events.
     APP_ERROR_CHECK(softdevice_ble_evt_handler_set(bleEvtDispatch));
 
+    device_init();
     gapParamsInit();
+    connection_init();
+    advertising_init();
 }
 
 static void gapParamsInit(void) {

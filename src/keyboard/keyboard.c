@@ -41,12 +41,12 @@ static void onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev);
 
 static uint8_t getKeyCode(uint8_t row, uint8_t col, bool withFn);
 
-static on_keyboard_event _onKeyboardEvent;
+static keyboard_eventHandler eventHandler;
 static uint8_t keyCodes[KEYBOARD_MAX_KEYS] = {0};
 static uint8_t fnKeys[MATRIX_ROWS];
 
-void keyboard_init(on_keyboard_event onKeyboardEvent) {
-    _onKeyboardEvent = onKeyboardEvent;
+void keyboard_init(keyboard_eventHandler keyboardEventHandler) {
+    eventHandler = keyboardEventHandler;
 
     for (int i = 0; i < MATRIX_ROWS; i++) {
         fnKeys[i] = 0;
@@ -107,8 +107,8 @@ static void onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev) {
         }
     }
 
-    if (_onKeyboardEvent != NULL) {
-        _onKeyboardEvent(modifiers,
+    if (eventHandler != NULL) {
+        eventHandler(modifiers,
                          (uint8_t) (keyLen > 0 ? keyCodes[0] : KEYBOARD_UNUSED),
                          (uint8_t) (keyLen > 1 ? keyCodes[1] : KEYBOARD_UNUSED),
                          (uint8_t) (keyLen > 2 ? keyCodes[2] : KEYBOARD_UNUSED),

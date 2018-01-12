@@ -152,7 +152,7 @@ static void eventHandler(pm_evt_t const *p_evt) {
             break;
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED: {
-            advertising_start();
+            advertising_active();
         }
             break;
 

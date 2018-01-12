@@ -18,7 +18,7 @@ static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE, BLE
 static void errorHandler(uint32_t nrf_error);
 static void advertising_eventHandler(ble_adv_evt_t ble_adv_evt);
 
-void advertising_start() {
+void advertising_active() {
     APP_ERROR_CHECK(ble_advertising_start(BLE_ADV_MODE_FAST));
 }
 
