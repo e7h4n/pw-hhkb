@@ -7,7 +7,9 @@
 
 #include "src/config.h"
 #include "src/keyboard/keyboard.h"
+#include "src/util/buffer.h"
 #include "src/util/error.h"
+#include "src/util/util.h"
 
 static void _onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt);
 
@@ -21,6 +23,8 @@ static uint32_t _sendKeyEvent(ble_hids_t *p_hids,
                               uint16_t pattern_len,
                               uint16_t pattern_offset,
                               uint16_t *p_actual_len);
+
+static void _keySend(uint8_t key_pattern_len, uint8_t *p_key_pattern);
 
 static ble_hids_t m_hids; /**< Structure used to identify the HID service. */
 
@@ -233,4 +237,35 @@ static uint32_t _sendKeyEvent(ble_hids_t *p_hids, uint8_t *p_key_pattern, uint16
     }
 
     return err_code;
+}
+
+/**@brief Function for sending sample key presses to the peer.
+ *
+ * @param[in]   key_pattern_len   Pattern length.
+ * @param[in]   p_key_pattern     Pattern to be sent.
+ */
+UNUSED_METHOD
+static void _keySend(uint8_t key_pattern_len, uint8_t *p_key_pattern) {
+    uint32_t err_code;
+    uint16_t actual_len;
+
+    err_code = _sendKeyEvent(&m_hids, p_key_pattern, key_pattern_len, 0, &actual_len);
+    // An additional notification is needed for release of all keys, therefore check
+    // is for actual_len <= key_pattern_len and not actual_len < key_pattern_len.
+    if ((err_code == BLE_ERROR_NO_TX_PACKETS) && (actual_len <= key_pattern_len)) {
+        // Buffer enqueue routine return value is not intentionally checked.
+        // Rationale: Its better to have a a few keys missing than have a system
+        // reset. Recommendation is to work out most optimal value for
+        // MAX_BUFFER_ENTRIES to minimize chances of buffer queue full condition
+        UNUSED_VARIABLE(buffer_enqueue(&m_hids, p_key_pattern, key_pattern_len, actual_len));
+    }
+
+
+    if ((err_code != NRF_SUCCESS) &&
+        (err_code != NRF_ERROR_INVALID_STATE) &&
+        (err_code != BLE_ERROR_NO_TX_PACKETS) &&
+        (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
+            ) {
+        APP_ERROR_HANDLER(err_code);
+    }
 }
