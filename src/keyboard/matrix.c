@@ -6,7 +6,7 @@
 #include <nrf_log.h>
 #include <app_timer.h>
 
-#include "util.h"
+#include "src/util/util.h"
 #include "config.h"
 
 #define ROW_PIN_START 2
@@ -197,7 +197,7 @@ static void onScanComplete() {
     phase = UP;
 }
 
-UNUSED
+UNUSED_METHOD
 /**
  * 100us for a full loop
  *                                   80us
@@ -270,7 +270,7 @@ void matrix_init(on_matrix_scan _onMatrixScan) {
     phase = STOPPED;
 }
 
-void matrix_scanStart() {
+void matrix_active() {
     if (phase != STOPPED) {
         return;
     }
@@ -285,7 +285,7 @@ void matrix_scanStart() {
     APP_ERROR_CHECK(app_timer_start(clockTimer, ONE_SECOND, NULL));
 }
 
-void matrix_scanStop() {
+void matrix_deactive() {
     if (phase == STOPPED) {
         return;
     }

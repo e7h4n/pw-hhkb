@@ -15,25 +15,45 @@ nRF5x_addBLEPeerManager()
 nRF5x_addAppFDS()
 
 include_directories(
-    "${NRF5_SDK_PATH}/components/ble/ble_services/ble_hids"
-    "${NRF5_SDK_PATH}/components/ble/ble_services/ble_bas"
-    "${NRF5_SDK_PATH}/components/ble/ble_services/ble_dis"
-    "${NRF5_SDK_PATH}/components/libraries/bsp"
-    "${NRF5_SDK_PATH}/components/libraries/sensorsim"
+        "${NRF5_SDK_PATH}/components/ble/ble_services/ble_hids"
+        "${NRF5_SDK_PATH}/components/ble/ble_services/ble_bas"
+        "${NRF5_SDK_PATH}/components/ble/ble_services/ble_dis"
+        "${NRF5_SDK_PATH}/components/libraries/bsp"
+        "${NRF5_SDK_PATH}/components/libraries/sensorsim"
 )
 
 list(APPEND SDK_SOURCE_FILES
-    "${NRF5_SDK_PATH}/components/ble/ble_services/ble_hids/ble_hids.c"
-    "${NRF5_SDK_PATH}/components/ble/ble_services/ble_bas/ble_bas.c"
-    "${NRF5_SDK_PATH}/components/ble/ble_services/ble_dis/ble_dis.c"
-    "${NRF5_SDK_PATH}/components/libraries/bsp/bsp.c"
-    "${NRF5_SDK_PATH}/components/libraries/bsp/bsp_btn_ble.c"
-    "${NRF5_SDK_PATH}/components/libraries/sensorsim/sensorsim.c"
-    "${NRF5_SDK_PATH}/components/libraries/timer/app_timer_appsh.c"
+        "${NRF5_SDK_PATH}/components/ble/ble_services/ble_hids/ble_hids.c"
+        "${NRF5_SDK_PATH}/components/ble/ble_services/ble_bas/ble_bas.c"
+        "${NRF5_SDK_PATH}/components/ble/ble_services/ble_dis/ble_dis.c"
+        "${NRF5_SDK_PATH}/components/libraries/bsp/bsp.c"
+        "${NRF5_SDK_PATH}/components/libraries/bsp/bsp_btn_ble.c"
+        "${NRF5_SDK_PATH}/components/libraries/sensorsim/sensorsim.c"
+        "${NRF5_SDK_PATH}/components/libraries/timer/app_timer_appsh.c"
+        )
+
+
+include_directories(
+        "./src"
+        "./src/service"
+        "./src/keyboard"
 )
-
-
-include_directories("./src")
-list(APPEND SOURCE_FILES "src/main.c" "src/keyboard/keyboard.c")
+list(
+        APPEND
+        SOURCE_FILES
+        "src/main.c"
+        "src/keyboard/matrix.c"
+        "src/keyboard/keyboard.c"
+        "src/service/battery.c"
+        "src/service/device.c"
+        "src/service/peer_manager.c"
+        "src/service/ble.c"
+        "src/service/hid.c"
+        "src/service/connection.c"
+        "src/service/advertising.c"
+        "src/util/buffer.c"
+        "src/util/util.c"
+        "src/util/error.c"
+)
 
 nRF5x_addExecutable(${PROJECT_NAME} "${SOURCE_FILES}")

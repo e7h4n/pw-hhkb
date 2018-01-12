@@ -10,14 +10,11 @@
 #include <stdbool.h>
 #include "stdint.h"
 
-typedef struct {
-    uint8_t col;
-    uint8_t row;
-} keyboard_pos_t;
+typedef void (*on_keyboard_event)(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
+                                  uint8_t key4, uint8_t key5);
 
-typedef struct {
-    keyboard_pos_t key;
-    bool     pressed;
-} keyboard_event_t;
+void keyboard_init(on_keyboard_event onKeyboardEvent);
 
-void keyboard_init(void);
+void keyboard_deactive();
+
+void keyboard_active();
