@@ -5,8 +5,6 @@
 #ifndef PW_HHKB_MATRIX_H
 #define PW_HHKB_MATRIX_H
 
-#endif //PW_HHKB_MATRIX_H
-
 #include <stdint.h>
 
 #define MATRIX_ROWS 8
@@ -23,3 +21,5 @@ void matrix_active();
 void matrix_deactive();
 
 void matrix_print();
+
+#endif //PW_HHKB_MATRIX_H

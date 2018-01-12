@@ -5,6 +5,6 @@
 #ifndef PW_HHKB_DEVICE_H
 #define PW_HHKB_DEVICE_H
 
-#endif //PW_HHKB_DEVICE_H
-
 void device_init();
+
+#endif //PW_HHKB_DEVICE_H

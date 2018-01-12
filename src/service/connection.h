@@ -5,6 +5,6 @@
 #ifndef PW_HHKB_CONNECTION_H
 #define PW_HHKB_CONNECTION_H
 
-#endif //PW_HHKB_CONNECTION_H
-
 void connection_init();
+
+#endif //PW_HHKB_CONNECTION_H
