@@ -39,11 +39,11 @@ uint8_t KEYMAP_FN_MODE[MATRIX_ROWS][MATRIX_COLS] = {
 
 static void _onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev);
 
-static uint8_t _getKeyCode(uint8_t row, uint8_t col, bool withFn);
+static uint8_t *_getKeyCode(uint8_t row, uint8_t col, bool withFn);
 
 static keyboard_eventHandler _eventHandler;
 
-static uint8_t _keyCodes[KEYBOARD_MAX_KEYS] = {0};
+static uint8_t *_keyCodes[KEYBOARD_MAX_KEYS] = {KEYBOARD_UNUSED};
 
 static uint8_t _fnKeys[MATRIX_ROWS];
 
@@ -69,7 +69,7 @@ static void _onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev) {
     matrix_row_t matrix_row = 0;
     matrix_row_t matrix_change = 0;
     uint8_t keyLen = 0;
-    uint8_t hidKeyCode = 0;
+    uint8_t *hidKeyCode = NULL;
 
     bool withFn = (bool) bitRead(matrix[5], 4);
 
@@ -98,11 +98,11 @@ static void _onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev) {
 
             hidKeyCode = _getKeyCode(row, col, bitRead(_fnKeys[row], col) > 0);
 
-            if (hidKeyCode >= KEYBOARD_HID_KEYCODE_MODIFIER_MIN &&
-                hidKeyCode <= KEYBOARD_HID_KEYCODE_MODIFIER_MAX) {
-                modifiers |= (1 << (hidKeyCode - KEYBOARD_HID_KEYCODE_MODIFIER_MIN));
+            if (*hidKeyCode >= KEYBOARD_HID_KEYCODE_MODIFIER_MIN &&
+                *hidKeyCode <= KEYBOARD_HID_KEYCODE_MODIFIER_MAX) {
+                modifiers |= (1 << (*hidKeyCode - KEYBOARD_HID_KEYCODE_MODIFIER_MIN));
             } else if (keyLen < KEYBOARD_MAX_KEYS) {
-                if (hidKeyCode != KEYBOARD_UNUSED) {
+                if (*hidKeyCode != KEYBOARD_UNUSED) {
                     _keyCodes[keyLen++] = hidKeyCode;
                 }
             }
@@ -110,21 +110,14 @@ static void _onMatrixScan(matrix_row_t *matrix, matrix_row_t *matrix_prev) {
     }
 
     if (_eventHandler != NULL) {
-        _eventHandler(modifiers,
-                      (uint8_t) (keyLen > 0 ? _keyCodes[0] : KEYBOARD_UNUSED),
-                      (uint8_t) (keyLen > 1 ? _keyCodes[1] : KEYBOARD_UNUSED),
-                      (uint8_t) (keyLen > 2 ? _keyCodes[2] : KEYBOARD_UNUSED),
-                      (uint8_t) (keyLen > 3 ? _keyCodes[3] : KEYBOARD_UNUSED),
-                      (uint8_t) (keyLen > 4 ? _keyCodes[4] : KEYBOARD_UNUSED),
-                      (uint8_t) (keyLen > 5 ? _keyCodes[5] : KEYBOARD_UNUSED)
-        );
+        _eventHandler(modifiers, (uint8_t *) _keyCodes, keyLen);
     }
 }
 
-static uint8_t _getKeyCode(uint8_t row, uint8_t col, bool withFn) {
+static uint8_t *_getKeyCode(uint8_t row, uint8_t col, bool withFn) {
     if (!withFn) {
-        return KEYMAP_NORMAL_MODE[row][col];
+        return &(KEYMAP_NORMAL_MODE[row][col]);
     }
 
-    return KEYMAP_FN_MODE[row][col] != KEYBOARD_UNUSED ? KEYMAP_FN_MODE[row][col] : KEYMAP_NORMAL_MODE[row][col];
+    return KEYMAP_FN_MODE[row][col] != KEYBOARD_UNUSED ? &(KEYMAP_FN_MODE[row][col]) : &(KEYMAP_NORMAL_MODE[row][col]);
 }

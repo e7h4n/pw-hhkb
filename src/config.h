@@ -10,7 +10,6 @@
 // TODO: 搞懂这个干什么的
 
 #define PERIPHERAL_LINK_COUNT 1 // Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
-#define SHIFT_BUTTON_ID 1 // Button used as 'SHIFT' Key.
 
 #define DEVICE_NAME "HHKB Pro2 BT"
 
@@ -70,14 +69,11 @@
 #define APP_FEATURE_NOT_SUPPORTED (BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2) // Reply when unsupported features are requested.
 // TODO: 搞懂这个干什么的
 
-#define MAX_BUFFER_ENTRIES 5 // Number of elements that can be enqueued
-// TODO: 搞懂这个干什么的
+#define MAX_BUFFER_ENTRIES 5
 
 #define BASE_USB_HID_SPEC_VERSION 0x0101 // Version number of base USB HID Specification implemented by this application.
 // TODO: 搞懂这个干什么的
 
-#define INPUT_REPORT_KEYS_MAX_LEN 8 // Maximum length of the Input Report characteristic.
-// TODO: 搞懂这个干什么的
 
 #define DEAD_BEEF 0xDEADBEEF // Value used as error code on stack dump, can be used to identify stack location on stack unwind.
 // TODO: 搞懂这个干什么的
@@ -91,13 +87,5 @@
 #endif
 // TODO: 搞懂这个干什么的
 
-#define MODIFIER_KEY_POS 0 // Position of the modifier byte in the Input Report.
-/*
- * This macro indicates the start position of the key scan code in a HID Report.
- * As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11,
- * each report shall have one modifier byte followed by a reserved constant byte and then the key scan code
- */
-#define SCAN_CODE_POS 2
-#define MAX_KEYS_IN_ONE_REPORT (INPUT_REPORT_KEYS_MAX_LEN - SCAN_CODE_POS) // Maximum number of key presses that can be sent in one Input Report.
 
 #endif //PW_HHKB_CONFIG_H

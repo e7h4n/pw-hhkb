@@ -13,7 +13,6 @@
 #include "src/service/battery.h"
 #include "src/service/ble.h"
 #include "src/service/hid.h"
-#include "src/util/buffer.h"
 #include "src/util/util.h"
 
 static void _timerInit();
@@ -27,7 +26,6 @@ int main(void) {
 
     _timerInit();
     _schedInit();
-    buffer_init();
 
     ble_init();
     battery_init();

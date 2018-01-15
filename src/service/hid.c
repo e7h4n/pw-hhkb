@@ -7,31 +7,37 @@
 
 #include "src/config.h"
 #include "src/keyboard/keyboard.h"
-#include "src/util/buffer.h"
 #include "src/util/error.h"
-#include "src/util/util.h"
+
+#define INPUT_REPORT_KEYS_MAX_LEN 8
+
+typedef struct {
+    uint8_t keyPattern[INPUT_REPORT_KEYS_MAX_LEN];
+    uint8_t keyPatternLen;
+} key_pattern_t;
 
 static void _onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt);
 
 static void _onHidRepCharWrite(ble_hids_evt_t *p_evt);
 
-static void _onKeyboardEvent(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
-                             uint8_t key4, uint8_t key5);
+static void _onKeyboardEvent(uint8_t modifiers, uint8_t *keyCodes, uint8_t keyCodeLen);
 
-static uint32_t _sendKeyEvent(ble_hids_t *p_hids,
-                              uint8_t *p_key_pattern,
-                              uint16_t pattern_len,
-                              uint16_t pattern_offset,
-                              uint16_t *p_actual_len);
+static uint32_t _sendKeyPattern(key_pattern_t *keyPattern);
 
-static void _keySend(uint8_t key_pattern_len, uint8_t *p_key_pattern);
+static uint32_t _bufferDequeue();
 
-static ble_hids_t m_hids; /**< Structure used to identify the HID service. */
+static void _bufferClear();
 
-static bool m_in_boot_mode = false;
+static ble_hids_t hidService;
+static key_pattern_t keyPatternBuffer[MAX_BUFFER_ENTRIES][8] = {0};
+static uint8_t keyPatternBufferSize;
+static uint8_t keyPatternReadIndex;
+static uint8_t keyPatternWriteIndex;
+static bool isTransmitting = false;
+static bool isBootMode = false;
 
 ble_hids_t *hid_service() {
-    return &m_hids;
+    return &hidService;
 }
 
 void hid_init() {
@@ -149,15 +155,54 @@ void hid_init() {
     BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.security_mode_ctrl_point.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_ctrl_point.write_perm);
 
-    err_code = ble_hids_init(&m_hids, &hids_init_obj);
+    err_code = ble_hids_init(&hidService, &hids_init_obj);
     APP_ERROR_CHECK(err_code);
 
     keyboard_init(_onKeyboardEvent);
 }
 
-static void _onKeyboardEvent(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
-                             uint8_t key4, uint8_t key5) {
-    // TODO: send hid event
+void hid_onBleEvent(ble_evt_t *p_ble_evt) {
+    switch (p_ble_evt->header.evt_id) {
+        case BLE_EVT_TX_COMPLETE:
+            if (keyPatternBufferSize == 0) {
+                isTransmitting = false;
+            } else {
+                _bufferDequeue();
+            }
+            break;
+        case BLE_GAP_EVT_DISCONNECTED:
+            NRF_LOG_INFO("Disconnected\r\n");
+            isTransmitting = false;
+            _bufferClear();
+            break;
+        default:
+            break;
+    }
+}
+
+static void _onKeyboardEvent(uint8_t modifiers, uint8_t *keyCodes, uint8_t keyCodeLen) {
+    if (keyPatternBufferSize == MAX_BUFFER_ENTRIES) {
+        // buffer is full, ignore input
+        return;
+    }
+
+    keyPatternBuffer[keyPatternWriteIndex]->keyPattern[0] = modifiers;
+    keyPatternBuffer[keyPatternWriteIndex]->keyPatternLen = (uint8_t) (keyCodeLen + 2);
+
+    for (uint8_t i = 0; i < keyCodeLen; i++) {
+        keyPatternBuffer[keyPatternWriteIndex]->keyPattern[i + 2] = keyCodes[i];
+    }
+
+    keyPatternBufferSize++;
+    keyPatternWriteIndex++;
+
+    if (keyPatternWriteIndex == MAX_BUFFER_ENTRIES) {
+        keyPatternWriteIndex = 0;
+    }
+
+    if (!isTransmitting) {
+        _bufferDequeue();
+    }
 }
 
 static void _onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt) {
@@ -165,11 +210,11 @@ static void _onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt) {
 
     switch (p_evt->evt_type) {
         case BLE_HIDS_EVT_BOOT_MODE_ENTERED:
-            m_in_boot_mode = true;
+            isBootMode = true;
             break;
 
         case BLE_HIDS_EVT_REPORT_MODE_ENTERED:
-            m_in_boot_mode = false;
+            isBootMode = false;
             break;
 
         case BLE_HIDS_EVT_REP_CHAR_WRITE:
@@ -180,7 +225,6 @@ static void _onHidEvt(ble_hids_t *p_hids, ble_hids_evt_t *p_evt) {
             break;
 
         default:
-            // No implementation needed.
             break;
     }
 }
@@ -196,7 +240,7 @@ static void _onHidRepCharWrite(ble_hids_evt_t *p_evt) {
             // static assert is made.
             STATIC_ASSERT(OUTPUT_REPORT_MAX_LEN == 1);
 
-            err_code = ble_hids_outp_rep_get(&m_hids,
+            err_code = ble_hids_outp_rep_get(&hidService,
                                              report_index,
                                              OUTPUT_REPORT_MAX_LEN,
                                              0,
@@ -206,66 +250,56 @@ static void _onHidRepCharWrite(ble_hids_evt_t *p_evt) {
     }
 }
 
-/**@brief   Function for transmitting a key scan Press & Release Notification.
- *
- * @warning This handler is an example only. You need to analyze how you wish to send the key
- *          release.
- *
- * @param[in]  p_instance     Identifies the service for which Key Notifications are requested.
- * @param[in]  p_key_pattern  Pointer to key pattern.
- * @param[in]  pattern_len    Length of key pattern. 0 < pattern_len < 7.
- * @param[in]  pattern_offset Offset applied to Key Pattern for transmission.
- * @param[out] actual_len     Provides actual length of Key Pattern transmitted, making buffering of
- *                            rest possible if needed.
- * @return     NRF_SUCCESS on success, BLE_ERROR_NO_TX_BUFFERS in case transmission could not be
- *             completed due to lack of transmission buffer or other error codes indicating reason
- *             for failure.
- */
-static uint32_t _sendKeyEvent(ble_hids_t *p_hids, uint8_t *p_key_pattern, uint16_t pattern_len, uint16_t pattern_offset,
-                              uint16_t *p_actual_len) {
+static uint32_t _sendKeyPattern(key_pattern_t *keyPattern) {
+    uint32_t errorCode;
+
+    if (!isBootMode) {
+        errorCode = ble_hids_inp_rep_send(&hidService, INPUT_REPORT_KEYS_INDEX, keyPattern->keyPatternLen, keyPattern->keyPattern);
+    } else {
+        errorCode = ble_hids_boot_kb_inp_rep_send(&hidService, keyPattern->keyPatternLen, keyPattern->keyPattern);
+    }
+
+    return errorCode;
+}
+
+static uint32_t _bufferDequeue() {
     uint32_t err_code;
 
-    if (!m_in_boot_mode) {
-        err_code = ble_hids_inp_rep_send(&m_hids,
-                                         INPUT_REPORT_KEYS_INDEX,
-                                         INPUT_REPORT_KEYS_MAX_LEN,
-                                         p_key_pattern);
+    if (keyPatternBufferSize == 0) {
+        err_code = NRF_ERROR_NOT_FOUND;
     } else {
-        err_code = ble_hids_boot_kb_inp_rep_send(&m_hids,
-                                                 INPUT_REPORT_KEYS_MAX_LEN,
-                                                 p_key_pattern);
+        bool remove_element = true;
+
+        err_code = _sendKeyPattern(keyPatternBuffer[keyPatternReadIndex]);
+
+        // An additional notification is needed for release of all keys, therefore check
+        // is for actual_len <= element->data_len and not actual_len < element->data_len
+        if (err_code == BLE_ERROR_NO_TX_PACKETS) {
+            remove_element = false;
+        } else {
+            isTransmitting = true;
+        }
+
+        if (remove_element) {
+            keyPatternReadIndex++;
+            keyPatternBufferSize--;
+
+            if (keyPatternReadIndex == MAX_BUFFER_ENTRIES) {
+                keyPatternReadIndex = 0;
+            }
+        }
     }
 
     return err_code;
 }
 
-/**@brief Function for sending sample key presses to the peer.
- *
- * @param[in]   key_pattern_len   Pattern length.
- * @param[in]   p_key_pattern     Pattern to be sent.
- */
-UNUSED_METHOD
-static void _keySend(uint8_t key_pattern_len, uint8_t *p_key_pattern) {
-    uint32_t err_code;
-    uint16_t actual_len;
+static void _bufferClear() {
+    while (keyPatternBufferSize > 0) {
+        keyPatternReadIndex++;
+        keyPatternBufferSize--;
 
-    err_code = _sendKeyEvent(&m_hids, p_key_pattern, key_pattern_len, 0, &actual_len);
-    // An additional notification is needed for release of all keys, therefore check
-    // is for actual_len <= key_pattern_len and not actual_len < key_pattern_len.
-    if ((err_code == BLE_ERROR_NO_TX_PACKETS) && (actual_len <= key_pattern_len)) {
-        // Buffer enqueue routine return value is not intentionally checked.
-        // Rationale: Its better to have a a few keys missing than have a system
-        // reset. Recommendation is to work out most optimal value for
-        // MAX_BUFFER_ENTRIES to minimize chances of buffer queue full condition
-        UNUSED_VARIABLE(buffer_enqueue(&m_hids, p_key_pattern, key_pattern_len, actual_len));
-    }
-
-
-    if ((err_code != NRF_SUCCESS) &&
-        (err_code != NRF_ERROR_INVALID_STATE) &&
-        (err_code != BLE_ERROR_NO_TX_PACKETS) &&
-        (err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-            ) {
-        APP_ERROR_HANDLER(err_code);
+        if (keyPatternReadIndex == MAX_BUFFER_ENTRIES) {
+            keyPatternReadIndex = 0;
+        }
     }
 }

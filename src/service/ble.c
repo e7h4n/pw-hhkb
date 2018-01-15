@@ -19,7 +19,6 @@
 #include "src/service/device.h"
 #include "src/service/hid.h"
 #include "src/service/peer_manager.h"
-#include "src/util/buffer.h"
 
 static void _onBleEvt(ble_evt_t *p_ble_evt);
 
@@ -57,6 +56,11 @@ void ble_init(void) {
     advertising_init();
 }
 
+/**@brief Function for the GAP initialization.
+ *
+ * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
+ *          device including the device name, appearance, and the preferred connection parameters.
+ */
 static void _gapParamsInit(void) {
     uint32_t err_code;
     ble_gap_conn_params_t gap_conn_params;
@@ -83,12 +87,20 @@ static void _gapParamsInit(void) {
     APP_ERROR_CHECK(err_code);
 }
 
+/**@brief   Function for dispatching a BLE stack event to all modules with a BLE stack event handler.
+ *
+ * @details This function is called from the scheduler in the main loop after a BLE stack
+ *          event has been received.
+ *
+ * @param[in]   p_ble_evt   Bluetooth stack event.
+ */
 static void _bleEvtDispatch(ble_evt_t *p_ble_evt) {
     /** The Connection state module has to be fed BLE events in order to function correctly
      * Remember to call ble_conn_state_on_ble_evt before calling any ble_conns_state_* functions. */
     ble_conn_state_on_ble_evt(p_ble_evt);
     pm_on_ble_evt(p_ble_evt);
     _onBleEvt(p_ble_evt);
+    hid_onBleEvent(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
     ble_conn_params_on_ble_evt(p_ble_evt);
     ble_hids_on_ble_evt(hid_service(), p_ble_evt);
@@ -105,15 +117,8 @@ static void _onBleEvt(ble_evt_t *p_ble_evt) {
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             break; // BLE_GAP_EVT_CONNECTED
 
-        case BLE_EVT_TX_COMPLETE:
-            // Send next key event
-            (void) buffer_dequeue(true);
-            break; // BLE_EVT_TX_COMPLETE
-
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected\r\n");
-            // Dequeue all keys without transmission.
-            (void) buffer_dequeue(false);
 
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
 

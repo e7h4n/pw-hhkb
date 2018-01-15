@@ -11,4 +11,6 @@ void hid_init();
 
 ble_hids_t* hid_service();
 
+void hid_onBleEvent(ble_evt_t *p_ble_evt);
+
 #endif //PW_HHKB_HID_H

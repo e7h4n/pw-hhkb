@@ -8,8 +8,7 @@
 #include <stdbool.h>
 #include "stdint.h"
 
-typedef void (*keyboard_eventHandler)(uint8_t modifiers, uint8_t key0, uint8_t key1, uint8_t key2, uint8_t key3,
-                                      uint8_t key4, uint8_t key5);
+typedef void (*keyboard_eventHandler)(uint8_t modifiers, uint8_t *keyCodes, uint8_t keyCodeLen);
 
 void keyboard_init(keyboard_eventHandler keyboardEventHandler);
 
