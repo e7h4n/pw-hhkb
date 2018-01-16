@@ -168,6 +168,7 @@ list(
         ${NRF5_SDK_PATH}/components/libraries/util/app_util_platform.c
         ${NRF5_SDK_PATH}/components/libraries/util/nrf_assert.c
         ${NRF5_SDK_PATH}/components/libraries/util/sdk_mapped_flags.c
+        ${NRF5_SDK_PATH}/components/softdevice/common/nrf_sdh.c
         ${NRF5_SDK_PATH}/components/toolchain/gcc/gcc_startup_nrf52.S
         ${NRF5_SDK_PATH}/components/toolchain/system_nrf52.c
         ${NRF5_SDK_PATH}/external/fprintf/nrf_fprintf.c
