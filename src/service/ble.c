@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "BLE"
+#define NRF_LOG_MODULE_NAME BLE
 
 #include "src/service/ble.h"
 

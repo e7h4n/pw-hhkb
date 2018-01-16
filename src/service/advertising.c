@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "ADVERTISING"
+#define NRF_LOG_MODULE_NAME ADVERTISING
 
 #include "src/service/advertising.h"
 

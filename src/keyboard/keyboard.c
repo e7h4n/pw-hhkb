@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "KEYBOARD"
+#define NRF_LOG_MODULE_NAME KEYBOARD
 
 #include "src/keyboard/keyboard.h"
 

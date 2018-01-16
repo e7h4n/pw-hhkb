@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "ERROR"
+#define NRF_LOG_MODULE_NAME ERROR
 
 
 #include <app_error.h>

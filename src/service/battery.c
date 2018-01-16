@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "BATTERY"
+#define NRF_LOG_MODULE_NAME BATTERY
 
 #include "src/service/battery.h"
 

@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "CONNECTION"
+#define NRF_LOG_MODULE_NAME CONNECTION
 
 #include <nrf_log.h>
 

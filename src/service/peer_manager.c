@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "PEER_MANAGER"
+#define NRF_LOG_MODULE_NAME PEER_MANAGER
 
 #include "src/service/peer_manager.h"
 

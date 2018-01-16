@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "UTIL"
+#define NRF_LOG_MODULE_NAME UTIL
 
 #include <nrf_log.h>
 

@@ -5,27 +5,11 @@ GROUP(-lgcc -lc -lnosys)
 
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x1f000, LENGTH = 0xe1000
-  RAM (rwx) :  ORIGIN = 0x20002128, LENGTH = 0x3ded8
+  FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x80000
+  RAM (rwx) :  ORIGIN = 0x20000000, LENGTH = 0x10000
 }
 
-SECTIONS
-{
-  .fs_data :
-  {
-    PROVIDE(__start_fs_data = .);
-    KEEP(*(.fs_data))
-    PROVIDE(__stop_fs_data = .);
-  } > RAM
-  .pwr_mgmt_data :
-  {
-    PROVIDE(__start_pwr_mgmt_data = .);
-    KEEP(*(.pwr_mgmt_data))
-    PROVIDE(__stop_pwr_mgmt_data = .);
-  } > RAM
-} INSERT AFTER .data;
-
-/* Linker script for Nordic Semiconductor nRF51 devices
+/* Linker script for Nordic Semiconductor nRF52 devices
  *
  * Version: Sourcery G++ 4.5-1
  * Support: https://support.codesourcery.com/GNUToolchain/
@@ -185,4 +169,11 @@ SECTIONS
 
     /* Check if data + heap + stack exceeds RAM limit */
     ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")
+
+    /* Check if text sections + data exceeds FLASH limit */
+    DataInitFlashUsed = __bss_start__ - __data_start__;
+    CodeFlashUsed = __etext - ORIGIN(FLASH);
+    TotalFlashUsed = CodeFlashUsed + DataInitFlashUsed;
+    ASSERT(TotalFlashUsed <= LENGTH(FLASH), "region FLASH overflowed with .data and user data")
+
 }

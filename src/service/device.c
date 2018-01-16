@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "DEVICE"
+#define NRF_LOG_MODULE_NAME DEVICE
 
 #include "src/service/device.h"
 

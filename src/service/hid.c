@@ -1,4 +1,4 @@
-#define NRF_LOG_MODULE_NAME "HID"
+#define NRF_LOG_MODULE_NAME HID
 
 #include "src/service/hid.h"
 
