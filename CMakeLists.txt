@@ -77,8 +77,6 @@ include_directories(
         ${NRF5_SDK_PATH}/components/libraries/atomic
         ${NRF5_SDK_PATH}/components/libraries/atomic_fifo
         ${NRF5_SDK_PATH}/components/libraries/balloc
-        ${NRF5_SDK_PATH}/components/libraries/bsp
-        ${NRF5_SDK_PATH}/components/libraries/button
         ${NRF5_SDK_PATH}/components/libraries/cli
         ${NRF5_SDK_PATH}/components/libraries/crc16
         ${NRF5_SDK_PATH}/components/libraries/crc32
@@ -109,16 +107,6 @@ include_directories(
         ${NRF5_SDK_PATH}/components/libraries/twi
         ${NRF5_SDK_PATH}/components/libraries/twi_mngr
         ${NRF5_SDK_PATH}/components/libraries/uart
-        ${NRF5_SDK_PATH}/components/libraries/usbd
-        ${NRF5_SDK_PATH}/components/libraries/usbd/class/audio
-        ${NRF5_SDK_PATH}/components/libraries/usbd/class/cdc
-        ${NRF5_SDK_PATH}/components/libraries/usbd/class/cdc/acm
-        ${NRF5_SDK_PATH}/components/libraries/usbd/class/hid
-        ${NRF5_SDK_PATH}/components/libraries/usbd/class/hid/generic
-        ${NRF5_SDK_PATH}/components/libraries/usbd/class/hid/kbd
-        ${NRF5_SDK_PATH}/components/libraries/usbd/class/hid/mouse
-        ${NRF5_SDK_PATH}/components/libraries/usbd/class/msc
-        ${NRF5_SDK_PATH}/components/libraries/usbd/config
         ${NRF5_SDK_PATH}/components/libraries/util
         ${NRF5_SDK_PATH}/components/softdevice/common
         ${NRF5_SDK_PATH}/components/softdevice/s132/headers
@@ -146,8 +134,6 @@ list(
         ${NRF5_SDK_PATH}/components/drivers_nrf/uart/nrf_drv_uart.c
         ${NRF5_SDK_PATH}/components/libraries/atomic_fifo/nrf_atfifo.c
         ${NRF5_SDK_PATH}/components/libraries/balloc/nrf_balloc.c
-        ${NRF5_SDK_PATH}/components/libraries/button/app_button.c
-        ${NRF5_SDK_PATH}/components/libraries/crc16/crc16.c
         ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_backend_serial.c
         ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_backend_uart.c
         ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_default_backends.c
@@ -158,8 +144,6 @@ list(
         ${NRF5_SDK_PATH}/components/libraries/fds/fds.c
         ${NRF5_SDK_PATH}/components/libraries/fstorage/nrf_fstorage.c
         ${NRF5_SDK_PATH}/components/libraries/fstorage/nrf_fstorage_sd.c
-        ${NRF5_SDK_PATH}/components/libraries/hardfault/hardfault_implementation.c
-        ${NRF5_SDK_PATH}/components/libraries/pwr_mgmt/nrf_pwr_mgmt.c
         ${NRF5_SDK_PATH}/components/libraries/scheduler/app_scheduler.c
         ${NRF5_SDK_PATH}/components/libraries/strerror/nrf_strerror.c
         ${NRF5_SDK_PATH}/components/libraries/timer/app_timer.c
@@ -173,6 +157,8 @@ list(
         ${NRF5_SDK_PATH}/components/toolchain/system_nrf52.c
         ${NRF5_SDK_PATH}/external/fprintf/nrf_fprintf.c
         ${NRF5_SDK_PATH}/external/fprintf/nrf_fprintf_format.c
+        ${NRF5_SDK_PATH}/external/segger_rtt/segger_rtt.c
+        ${NRF5_SDK_PATH}/external/segger_rtt/segger_rtt_printf.c
 
 )
 
@@ -198,10 +184,23 @@ add_custom_command(TARGET ${EXECUTABLE_NAME}
         COMMENT "post build steps for ${EXECUTABLE_NAME}")
 
 # custom target for flashing the board
-add_custom_target("FLASH" ALL
+set(SOFTDEVICE_PATH "${NRF5_SDK_PATH}/components/softdevice/s132/hex/s132_nrf52_5.0.0_softdevice.hex")
+
+add_custom_target("FLASH_${EXECUTABLE_NAME}" ALL
+        COMMAND ${NRFJPROG} --program ${SOFTDEVICE_PATH} -f NRF52 --sectorerase
+        COMMAND sleep 0.5s
+        COMMAND ${NRFJPROG} --reset -f NRF52
+        COMMAND sleep 0.5s
         COMMAND ${NRFJPROG} --program ${EXECUTABLE_NAME}.hex -f NRF52 --sectorerase
         COMMAND sleep 0.5s
         COMMAND ${NRFJPROG} --reset -f NRF52
         DEPENDS ${EXECUTABLE_NAME}
         COMMENT "flashing ${EXECUTABLE_NAME}.hex"
+        )
+
+add_custom_target(FLASH_SOFTDEVICE ALL
+        COMMAND ${NRFJPROG} --program ${SOFTDEVICE_PATH} -f NRF52 --sectorerase
+        COMMAND sleep 0.5s
+        COMMAND ${NRFJPROG} --reset -f NRF52
+        COMMENT "flashing SoftDevice"
         )
