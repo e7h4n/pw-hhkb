@@ -150,6 +150,8 @@ include_directories(
         ${NRF5_SDK_PATH}/components/toolchain
         ${NRF5_SDK_PATH}/components/toolchain/cmsis/include
         ${NRF5_SDK_PATH}/components/toolchain/gcc
+        ${NRF5_SDK_PATH}/components/libraries/experimental_log
+        ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/
         ${NRF5_SDK_PATH}/external/fprintf
         ${NRF5_SDK_PATH}/external/segger_rtt
 )
@@ -205,6 +207,12 @@ list(
         ${NRF5_SDK_PATH}/components/softdevice/common/nrf_sdh_soc.c
         ${NRF5_SDK_PATH}/components/toolchain/gcc/gcc_startup_nrf52.S
         ${NRF5_SDK_PATH}/components/toolchain/system_nrf52.c
+        ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_frontend.c
+        ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_default_backends.c
+        ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_backend_rtt.c
+        ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_backend_uart.c
+        ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_backend_serial.c
+        ${NRF5_SDK_PATH}/components/libraries/experimental_log/src/nrf_log_str_formatter.c
         ${NRF5_SDK_PATH}/external/fprintf/nrf_fprintf.c
         ${NRF5_SDK_PATH}/external/fprintf/nrf_fprintf_format.c
         ${NRF5_SDK_PATH}/external/segger_rtt/SEGGER_RTT.c
